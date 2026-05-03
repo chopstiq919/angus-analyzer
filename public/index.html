@@ -8,25 +8,32 @@
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
   :root {
-    --bg: #0f0e0c;
-    --surface: #1a1814;
-    --surface2: #242018;
-    --border: #2e2a22;
-    --border2: #3d3828;
+    --bg: #1c1a16;
+    --surface: #252219;
+    --surface2: #2e2a1f;
+    --border: #3d3828;
+    --border2: #524d3a;
     --gold: #c9a84c;
     --gold2: #e8c96a;
-    --gold-dim: #7a6530;
-    --text: #e8e0d0;
-    --text2: #a89e88;
-    --text3: #6b6355;
-    --green: #4a8c5c;
-    --green-bg: #1a2e20;
-    --red: #8c4a4a;
-    --red-bg: #2e1a1a;
+    --gold-dim: #9a7e3a;
+    --text: #f0e8d8;
+    --text2: #c8b896;
+    --text3: #8a7d65;
+    --green: #5aac70;
+    --green-bg: #1e3326;
+    --red: #b05a5a;
+    --red-bg: #361e1e;
     --radius: 6px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
 
   body {
     background: var(--bg);
@@ -53,7 +60,7 @@
     display: flex;
     align-items: flex-end;
     gap: 20px;
-    background: linear-gradient(180deg, #1a1610 0%, var(--bg) 100%);
+    background: linear-gradient(180deg, #232018 0%, var(--bg) 100%);
   }
 
   .header-eyebrow {
@@ -615,7 +622,8 @@
       <div class="input-row">
         <div class="input-group">
           <div class="input-label">Cow Name or Registration Number</div>
-          <input type="text" id="cowInput" placeholder="e.g. B I G Home Run of 1962 B506  or  21193816" />
+          <input type="text" id="cowInput" placeholder="e.g. B I G Home Run of 1962 B506  or  21193816"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();setCow();}" />
           <div class="helper">AAA registration number gives the most accurate EPD lookup</div>
         </div>
         <div style="padding-top:22px;">
@@ -700,19 +708,19 @@ const VALUE_OPTIONS = [
 // ── VALUE CHIPS ──
 function renderValueGrid() {
   document.getElementById('valueGrid').innerHTML = VALUE_OPTIONS.map(v => `
-    <label class="value-chip ${selectedValues.has(v.key) ? 'checked' : ''}" onclick="toggleValue('${v.key}', this)">
-      <input type="checkbox" ${selectedValues.has(v.key) ? 'checked' : ''} />
+    <div class="value-chip ${selectedValues.has(v.key) ? 'checked' : ''}"
+         onclick="toggleValue('${v.key}', this)">
       <div>
         <div class="value-chip-label">${v.label}</div>
         <div class="value-chip-desc">${v.desc}</div>
       </div>
-    </label>
+    </div>
   `).join('');
 }
 
 function toggleValue(key, el) {
   if (selectedValues.has(key)) {
-    if (selectedValues.size <= 1) return;
+    if (selectedValues.size <= 1) return; // always keep at least one
     selectedValues.delete(key);
     el.classList.remove('checked');
   } else {
@@ -746,13 +754,30 @@ function renderBullList() {
     <div class="bull-entry">
       <div class="bull-number">${i + 1}</div>
       <input type="text"
+        id="bull-input-${b.id}"
         placeholder="Name or registration number"
         value="${b.value}"
         oninput="updateBull(${b.id}, this.value)"
         onblur="checkShowConfig()"
+        onkeydown="handleBullEnter(event, ${i})"
       />
       ${bulls.length > 1 ? `<button class="btn btn-danger" onclick="removeBull(${b.id})">✕</button>` : ''}
     </div>`).join('');
+}
+
+function handleBullEnter(event, index) {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  const nextBull = bulls[index + 1];
+  if (nextBull) {
+    // Focus next bull input
+    const nextInput = document.getElementById(`bull-input-${nextBull.id}`);
+    if (nextInput) nextInput.focus();
+  } else {
+    // Last bull — show config and scroll to it
+    checkShowConfig();
+    scrollTo('sectionConfig');
+  }
 }
 
 function addBull() {
@@ -1052,7 +1077,9 @@ function formatAnalysis(text) {
 
 function scrollTo(id) {
   const el = document.getElementById(id);
-  if (el) window.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' });
+  if (!el) return;
+  // Try scrollIntoView first — works better across different scroll contexts
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── RESET ──
