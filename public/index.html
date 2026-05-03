@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Angus Breeding Analyzer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1814;
+    --surface2: #242018;
+    --border: #2e2a22;
+    --border2: #3d3828;
+    --gold: #c9a84c;
+    --gold2: #e8c96a;
+    --gold-dim: #7a6530;
+    --text: #e8e0d0;
+    --text2: #a89e88;
+    --text3: #6b6355;
+    --green: #4a8c5c;
+    --green-bg: #1a2e20;
+    --red: #8c4a4a;
+    --red-bg: #2e1a1a;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    background: linear-gradient(180deg, #1a1610 0%, var(--bg) 100%);
+  }
+
+  .header-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 2px;
+  }
+
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .header-sub {
+    font-size: 12px;
+    color: var(--text3);
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 40px 60px;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    margin-bottom: 10px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .input-label {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.08em;
+  }
+
+  input[type="text"], input[type="password"], textarea, select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+    border-color: var(--gold-dim);
+  }
+
+  input::placeholder, textarea::placeholder { color: var(--text3); }
+
+  textarea {
+    resize: vertical;
+    min-height: 72px;
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 10px 22px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .btn-primary {
+    background: #f0e6c8;
+    color: #1a1610;
+    border: 1px solid #c9a84c;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #fff9ed;
+    border-color: var(--gold2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(201,168,76,0.25);
+  }
+
+  .btn-primary:disabled {
+    background: var(--surface2);
+    color: var(--text3);
+    border-color: var(--border2);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+
+  .btn-ghost:hover { border-color: var(--gold-dim); color: var(--text); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid rgba(140,74,74,0.4);
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .btn-danger:hover { background: var(--red-bg); border-color: var(--red); }
+  .btn-small { padding: 6px 14px; font-size: 11px; }
+
+  .bull-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+
+  .bull-entry {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+  }
+
+  .bull-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gold-dim);
+    width: 28px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .bull-entry input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border2);
+    border-radius: 0;
+    padding: 4px 0;
+  }
+
+  .bull-entry input:focus { border-bottom-color: var(--gold-dim); }
+
+  .mode-toggle { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+
+  .mode-btn {
+    padding: 7px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+
+  .mode-btn:hover { color: var(--text); border-color: var(--gold-dim); }
+  .mode-btn.active { background: var(--gold); color: #0f0e0c; border-color: var(--gold); font-weight: 500; }
+
+  .value-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+  .value-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .value-chip:hover { border-color: var(--gold-dim); }
+  .value-chip.checked { background: rgba(201,168,76,0.12); border-color: var(--gold); }
+  .value-chip input[type="checkbox"] { display: none; }
+
+  .value-chip-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  .value-chip.checked .value-chip-label { color: var(--gold2); }
+  .value-chip-desc { font-size: 10px; color: var(--text3); }
+  .value-chip.checked .value-chip-desc { color: var(--gold-dim); }
+
+  .results-section { margin-top: 32px; }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .results-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .results-cow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.2);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .parentage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .parentage-badge {
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    border: 1px solid;
+  }
+
+  .parentage-badge.pass { background: var(--green-bg); border-color: var(--green); }
+  .parentage-badge.fail { background: var(--red-bg); border-color: var(--red); }
+
+  .badge-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .badge-status { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .pass .badge-status { color: #6dbf84; }
+  .fail .badge-status { color: #bf6d6d; }
+  .badge-reason { font-size: 11px; color: var(--text2); line-height: 1.4; }
+
+  .comparison-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+
+  .comparison-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .comparison-table th.bull-col { color: var(--gold); text-align: center; }
+  .comparison-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .comparison-table tr:last-child td { border-bottom: none; }
+  .comparison-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .trait-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text2); }
+
+  .trait-group {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--gold-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 10px 12px 4px;
+    background: rgba(201,168,76,0.04);
+  }
+
+  .epd-cell { text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .epd-value { color: var(--text); }
+  .epd-pct { font-size: 10px; }
+  .epd-pct.elite { color: #6dbf84; }
+  .epd-pct.good { color: var(--gold); }
+  .epd-pct.poor { color: #bf6d6d; }
+  .epd-pct.avg { color: var(--text3); }
+
+  .disqualified-col { opacity: 0.25; }
+
+  .analysis-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+
+  .analysis-block h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analysis-text { color: var(--text2); font-size: 13px; line-height: 1.8; }
+
+  .recommendation-box {
+    background: linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+
+  .rec-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    margin-bottom: 6px;
+  }
+
+  .rec-value { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--gold2); }
+  .rec-reason { font-size: 13px; color: var(--text2); margin-top: 8px; line-height: 1.6; }
+
+  .foot-note {
+    background: rgba(201,168,76,0.05);
+    border-left: 2px solid var(--gold-dim);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin-top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    line-height: 1.6;
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 16px;
+  }
+
+  .loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .streaming-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.8;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .streaming-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: var(--gold);
+    margin-left: 2px;
+    animation: blink 0.8s step-end infinite;
+    vertical-align: text-bottom;
+  }
+
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .error-box {
+    background: var(--red-bg);
+    border: 1px solid var(--red);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: #bf6d6d;
+    margin-top: 16px;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .helper { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; margin-top: 5px; }
+
+  .step-indicator {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .step.active { color: var(--gold); }
+  .step.done { color: var(--green); }
+
+  .step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .step-sep { flex: 1; height: 1px; background: var(--border); max-width: 40px; }
+
+  .cow-info-display {
+    background: rgba(201,168,76,0.05);
+    border: 1px solid rgba(201,168,76,0.15);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .cow-info-display strong { color: var(--gold); display: block; font-size: 13px; margin-bottom: 2px; }
+
+  .midpoint-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+
+  .midpoint-card {
+    flex: 1;
+    min-width: 150px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+
+  .midpoint-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 4px;
+  }
+
+  .expected-dc { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; }
+  .dc-great { color: #6dbf84; }
+  .dc-good { color: var(--gold2); }
+  .dc-ok { color: var(--text2); }
+
+  .context-note {
+    background: var(--surface2);
+    border-left: 2px solid var(--gold-dim);
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text3);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin-top: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 640px) {
+    .header { padding: 20px; }
+    .header-sub { display: none; }
+    .main { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-eyebrow">Seedstock Intelligence</div>
+    <div class="header-title">Angus Breeding Analyzer</div>
+  </div>
+  <div class="header-sub">EPD · Parentage · $C Analysis</div>
+</div>
+
+<div class="main">
+
+  <!-- STEP INDICATOR -->
+  <div class="step-indicator">
+    <div class="step active" id="step1"><div class="step-num">1</div><span>Enter Cow</span></div>
+    <div class="step-sep"></div>
+    <div class="step" id="step2"><div class="step-num">2</div><span>Add Bulls</span></div>
+    <div class="step-sep"></div>
+    <div class="step" id="step3"><div class="step-num">3</div><span>Configure</span></div>
+    <div class="step-sep"></div>
+    <div class="step" id="step4"><div class="step-num">4</div><span>Analyze</span></div>
+  </div>
+
+  <!-- STEP 1: COW -->
+  <div id="sectionCow">
+    <div class="section-label">Step 1 — The Female</div>
+    <div class="card">
+      <div class="input-row">
+        <div class="input-group">
+          <div class="input-label">Cow Name or Registration Number</div>
+          <input type="text" id="cowInput" placeholder="e.g. B I G Home Run of 1962 B506  or  21193816" />
+          <div class="helper">AAA registration number gives the most accurate EPD lookup</div>
+        </div>
+        <div style="padding-top:22px;">
+          <button class="btn btn-primary" onclick="setCow()">Set Cow →</button>
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="input-label" style="margin-bottom:6px;">Additional Notes (optional)</div>
+        <textarea id="cowNotes" placeholder="Known strengths, weaknesses, management context, first-calf heifer, etc."></textarea>
+        <div class="helper">Any context about this cow helps calibrate the analysis</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: BULLS -->
+  <div id="sectionBulls" style="display:none; margin-top:24px;">
+    <div id="cowDisplay"></div>
+    <div class="section-label">Step 2 — Candidate Bulls (up to 6)</div>
+    <div class="card">
+      <div class="bull-list" id="bullList"></div>
+      <button class="btn btn-ghost btn-small" onclick="addBull()">+ Add Another Bull</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: CONFIG -->
+  <div id="sectionConfig" style="display:none; margin-top:24px;">
+    <div class="section-label">Step 3 — Analysis Preferences</div>
+    <div class="card">
+
+      <div class="input-label" style="margin-bottom:8px;">Output Format</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="both" onclick="setMode('both', this)">Table + Written Analysis</button>
+        <button class="mode-btn" data-mode="table" onclick="setMode('table', this)">Table Only</button>
+        <button class="mode-btn" data-mode="analysis" onclick="setMode('analysis', this)">Written Analysis Only</button>
+      </div>
+
+      <hr class="divider">
+
+      <div class="input-label" style="margin-bottom:4px;">$Value Priorities</div>
+      <div class="helper" style="margin-bottom:10px;">Select the indexes most important to your program — these will be weighted most heavily in the recommendation</div>
+      <div class="value-grid" id="valueGrid"></div>
+
+      <div class="context-note">
+        Foot structure (Claw &amp; Angle) is automatically assessed relative to this cow's specific scores — no separate setting needed. If the cow has compromised feet, the analysis flags compounding risk with a poor-footed bull and weighs it against the $C gain.
+      </div>
+
+      <div style="margin-top:20px;">
+        <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()">Run Analysis →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsSection" style="display:none;" class="results-section">
+    <div class="results-header">
+      <div class="results-title">Analysis Results</div>
+      <div class="results-cow" id="resultsCowLabel"></div>
+      <button class="btn btn-ghost btn-small" onclick="resetAll()" style="margin-left:auto;">← New Analysis</button>
+    </div>
+    <div id="resultsContent"></div>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ──
+let cowData = null;
+let bulls = [{ id: 1, value: '' }, { id: 2, value: '' }];
+let outputMode = 'both';
+let bullIdCounter = 3;
+let selectedValues = new Set(['$C']);
+
+const VALUE_OPTIONS = [
+  { key: '$C', label: '$C', desc: 'Combined Value' },
+  { key: '$B', label: '$B', desc: 'Beef Value' },
+  { key: '$W', label: '$W', desc: 'Weaned Calf Value' },
+  { key: '$M', label: '$M', desc: 'Maternal Value' },
+  { key: '$F', label: '$F', desc: 'Feedlot Value' },
+  { key: '$G', label: '$G', desc: 'Grid Value' },
+];
+
+// ── VALUE CHIPS ──
+function renderValueGrid() {
+  document.getElementById('valueGrid').innerHTML = VALUE_OPTIONS.map(v => `
+    <label class="value-chip ${selectedValues.has(v.key) ? 'checked' : ''}" onclick="toggleValue('${v.key}', this)">
+      <input type="checkbox" ${selectedValues.has(v.key) ? 'checked' : ''} />
+      <div>
+        <div class="value-chip-label">${v.label}</div>
+        <div class="value-chip-desc">${v.desc}</div>
+      </div>
+    </label>
+  `).join('');
+}
+
+function toggleValue(key, el) {
+  if (selectedValues.has(key)) {
+    if (selectedValues.size <= 1) return;
+    selectedValues.delete(key);
+    el.classList.remove('checked');
+  } else {
+    selectedValues.add(key);
+    el.classList.add('checked');
+  }
+}
+
+// ── STEP 1 ──
+function setCow() {
+  const val = document.getElementById('cowInput').value.trim();
+  if (!val) return;
+  cowData = { input: val, notes: document.getElementById('cowNotes').value.trim() };
+
+  document.getElementById('cowDisplay').innerHTML = `
+    <div class="cow-info-display">
+      <strong>${val}</strong>
+      ${cowData.notes ? `<span>${cowData.notes}</span>` : ''}
+    </div>`;
+
+  document.getElementById('sectionBulls').style.display = 'block';
+  document.getElementById('step1').className = 'step done';
+  document.getElementById('step2').className = 'step active';
+  renderBullList();
+  scrollTo('sectionBulls');
+}
+
+// ── STEP 2 ──
+function renderBullList() {
+  document.getElementById('bullList').innerHTML = bulls.map((b, i) => `
+    <div class="bull-entry">
+      <div class="bull-number">${i + 1}</div>
+      <input type="text"
+        placeholder="Name or registration number"
+        value="${b.value}"
+        oninput="updateBull(${b.id}, this.value)"
+        onblur="checkShowConfig()"
+      />
+      ${bulls.length > 1 ? `<button class="btn btn-danger" onclick="removeBull(${b.id})">✕</button>` : ''}
+    </div>`).join('');
+}
+
+function addBull() {
+  if (bulls.length >= 6) return;
+  bulls.push({ id: bullIdCounter++, value: '' });
+  renderBullList();
+}
+
+function removeBull(id) {
+  if (bulls.length <= 1) return;
+  bulls = bulls.filter(b => b.id !== id);
+  renderBullList();
+}
+
+function updateBull(id, val) {
+  const b = bulls.find(b => b.id === id);
+  if (b) b.value = val;
+}
+
+function checkShowConfig() {
+  if (bulls.filter(b => b.value.trim()).length >= 1) {
+    document.getElementById('sectionConfig').style.display = 'block';
+    document.getElementById('step2').className = 'step done';
+    document.getElementById('step3').className = 'step active';
+    renderValueGrid();
+  }
+}
+
+// ── STEP 3 ──
+function setMode(mode, btn) {
+  outputMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── STEP 4: ANALYSIS ──
+async function runAnalysis() {
+  const filledBulls = bulls.filter(b => b.value.trim());
+  if (!cowData || filledBulls.length === 0) return;
+
+  document.getElementById('step3').className = 'step done';
+  document.getElementById('step4').className = 'step active';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('resultsCowLabel').textContent = cowData.input;
+  document.getElementById('resultsContent').innerHTML = `
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div class="loading-status">
+        Looking up EPD data on angus.org and running analysis...<br>
+        <span style="font-size:10px;margin-top:4px;display:block;">This takes 15–30 seconds</span>
+      </div>
+    </div>
+    <div class="streaming-block" id="streamingBlock" style="display:none;"></div>`;
+
+  scrollTo('resultsSection');
+
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cow: cowData.input,
+        cowNotes: cowData.notes,
+        bulls: filledBulls.map(b => b.value),
+        outputMode,
+        priorityValues: Array.from(selectedValues)
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || `Server error ${response.status}`);
+    }
+
+    // Read SSE stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let streamEl = document.getElementById('streamingBlock');
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const event = JSON.parse(line.slice(6));
+
+          if (event.type === 'text') {
+            fullText += event.text;
+            // Show streaming text preview
+            if (streamEl.style.display === 'none') {
+              streamEl.style.display = 'block';
+              document.querySelector('.loading-state').style.display = 'none';
+            }
+            streamEl.innerHTML = escapeHtml(fullText) + '<span class="streaming-cursor"></span>';
+            streamEl.scrollTop = streamEl.scrollHeight;
+          }
+
+          if (event.type === 'done') {
+            renderResults(event.fullText || fullText);
+          }
+
+          if (event.type === 'error') {
+            throw new Error(event.message);
+          }
+        } catch(e) {
+          if (e.message && !e.message.includes('JSON')) throw e;
+        }
+      }
+    }
+
+  } catch (err) {
+    document.getElementById('resultsContent').innerHTML = `
+      <div class="error-box">
+        <strong>Error:</strong> ${err.message}<br>
+        <span style="font-size:11px;margin-top:4px;display:block;">Check that the server is running and your API key is configured.</span>
+      </div>`;
+  }
+
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+// ── RENDER RESULTS ──
+function renderResults(rawText) {
+  let jsonData = null;
+  let writtenAnalysis = rawText;
+
+  // Try to extract JSON block
+  const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) ||
+                    rawText.match(/(\{[\s\S]*?"cow"[\s\S]*?"bulls"[\s\S]*?\})/);
+  if (jsonMatch) {
+    try {
+      jsonData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      writtenAnalysis = rawText
+        .replace(/```json[\s\S]*?```/, '')
+        .replace(/\{[\s\S]*?"cow"[\s\S]*?"bulls"[\s\S]*?\}/, '')
+        .trim();
+    } catch(e) { console.warn('JSON parse failed', e); }
+  }
+
+  let html = '';
+
+  if (jsonData) {
+    // Recommendation
+    if (jsonData.recommendation) {
+      const rec = jsonData.recommendation;
+      html += `
+        <div class="recommendation-box">
+          <div class="rec-label">Recommended Mating</div>
+          <div class="rec-value">${rec.bullName || 'No eligible bulls found'}</div>
+          ${rec.expectedCalfC ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);margin-top:4px;">${rec.expectedCalfC}</div>` : ''}
+          <div class="rec-reason">${rec.summary || ''}</div>
+          ${rec.footStructureNote ? `<div class="foot-note">🦶 ${rec.footStructureNote}</div>` : ''}
+        </div>`;
+    }
+
+    // Parentage badges
+    if (jsonData.bulls?.length) {
+      html += `<div class="section-label">Parentage Compatibility</div>`;
+      html += `<div class="parentage-grid">`;
+      jsonData.bulls.forEach(bull => {
+        const pass = bull.parentageResult === 'PASS';
+        html += `
+          <div class="parentage-badge ${pass ? 'pass' : 'fail'}">
+            <div class="badge-name">${bull.name || 'Unknown'}</div>
+            <div class="badge-status">${pass ? '✓ Compatible' : '✗ Disqualified'}</div>
+            <div class="badge-reason">${bull.parentageReason || ''}</div>
+          </div>`;
+      });
+      html += `</div>`;
+
+      // Expected $C midpoints
+      const eligible = jsonData.bulls.filter(b => b.parentageResult === 'PASS');
+      if (eligible.length) {
+        html += `<div class="midpoint-row">`;
+        eligible.forEach(b => {
+          const mid = b.expectedMidpointC;
+          const cls = mid >= 460 ? 'dc-great' : mid >= 435 ? 'dc-good' : 'dc-ok';
+          html += `
+            <div class="midpoint-card">
+              <div class="midpoint-label">Expected $C Midpoint</div>
+              <div class="expected-dc ${cls}">$${mid || '—'}</div>
+              <div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-top:2px;">${b.name}</div>
+            </div>`;
+        });
+        html += `</div>`;
+      }
+
+      // EPD Table
+      if (outputMode !== 'analysis') {
+        const traitGroups = [
+          { group: 'Carcass & $Values', items: [
+            { key: '$C', label: '$C', pctKey: '$C_pct' },
+            { key: 'Marb', label: 'Marb', pctKey: 'Marb_pct' },
+            { key: 'CW', label: 'CW', pctKey: 'CW_pct' },
+            { key: 'RE', label: 'RE', pctKey: 'RE_pct' },
+          ]},
+          { group: 'Growth', items: [
+            { key: 'WW', label: 'WW', pctKey: 'WW_pct' },
+            { key: 'YW', label: 'YW', pctKey: 'YW_pct' },
+            { key: 'BW', label: 'BW', pctKey: 'BW_pct' },
+          ]},
+          { group: 'Structure & Management', items: [
+            { key: 'Claw_pct', label: 'Claw %', pctKey: null },
+            { key: 'Angle_pct', label: 'Angle %', pctKey: null },
+            { key: 'Doc_pct', label: 'Doc %', pctKey: null },
+            { key: 'HS_pct', label: 'HS %', pctKey: null },
+          ]},
+        ];
+
+        html += `<div class="section-label" style="margin-top:8px;">EPD Comparison</div>`;
+        html += `<table class="comparison-table"><thead><tr>
+          <th>Trait</th><th>COW</th>
+          ${jsonData.bulls.map(b => `
+            <th class="bull-col">
+              ${b.name?.split(' ').slice(-2).join(' ') || 'Bull'}<br>
+              <span style="font-size:9px;font-weight:400;color:${b.parentageResult==='PASS'?'var(--green)':'var(--red)'}">
+                ${b.parentageResult==='PASS'?'✓ eligible':'✗ disq'}
+              </span>
+            </th>`).join('')}
+        </tr></thead><tbody>`;
+
+        traitGroups.forEach(g => {
+          html += `<tr><td colspan="${2 + jsonData.bulls.length}" class="trait-group">${g.group}</td></tr>`;
+          g.items.forEach(trait => {
+            html += `<tr><td class="trait-name">${trait.label}</td>`;
+
+            // Cow
+            const cowE = jsonData.cow?.epds || {};
+            const cv = cowE[trait.key];
+            const cp = trait.pctKey ? cowE[trait.pctKey] : (trait.key.endsWith('_pct') ? cv : null);
+            html += `<td class="epd-cell">
+              <div class="epd-value">${cv !== undefined && cv !== null ? cv : '—'}</div>
+              ${cp != null ? `<div class="epd-pct ${pctClass(cp)}">${cp}%</div>` : ''}
+            </td>`;
+
+            // Bulls
+            jsonData.bulls.forEach(bull => {
+              const disq = bull.parentageResult !== 'PASS';
+              const be = bull.epds || {};
+              const bv = be[trait.key];
+              const bp = trait.pctKey ? be[trait.pctKey] : (trait.key.endsWith('_pct') ? bv : null);
+              html += `<td class="epd-cell${disq ? ' disqualified-col' : ''}">
+                <div class="epd-value">${bv !== undefined && bv !== null ? bv : '—'}</div>
+                ${bp != null && !disq ? `<div class="epd-pct ${pctClass(bp)}">${bp}%</div>` : ''}
+              </td>`;
+            });
+            html += `</tr>`;
+          });
+        });
+
+        html += `</tbody></table>`;
+      }
+    }
+  }
+
+  // Written analysis
+  if ((outputMode === 'analysis' || outputMode === 'both') && writtenAnalysis?.trim()) {
+    html += `
+      <div class="analysis-block">
+        <h3>Detailed Analysis</h3>
+        <div class="analysis-text">${formatAnalysis(writtenAnalysis.trim())}</div>
+      </div>`;
+  }
+
+  document.getElementById('resultsContent').innerHTML =
+    html || `<div class="error-box">No results to display. Please try again.</div>`;
+}
+
+// ── HELPERS ──
+function pctClass(p) {
+  if (p <= 5) return 'elite';
+  if (p <= 20) return 'good';
+  if (p >= 70) return 'poor';
+  return 'avg';
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatAnalysis(text) {
+  return escapeHtml(text)
+    .replace(/\n\n/g, '</p><p style="margin-top:12px;">')
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text)">$1</strong>');
+}
+
+function scrollTo(id) {
+  const el = document.getElementById(id);
+  if (el) window.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' });
+}
+
+// ── RESET ──
+function resetAll() {
+  cowData = null;
+  bulls = [{ id: 1, value: '' }, { id: 2, value: '' }];
+  bullIdCounter = 3;
+  outputMode = 'both';
+  selectedValues = new Set(['$C']);
+
+  ['cowInput','cowNotes'].forEach(id => document.getElementById(id).value = '');
+  ['sectionBulls','sectionConfig','resultsSection'].forEach(id =>
+    document.getElementById(id).style.display = 'none');
+
+  document.getElementById('step1').className = 'step active';
+  ['step2','step3','step4'].forEach(id => document.getElementById(id).className = 'step');
+  document.querySelectorAll('.mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === 'both'));
+  outputMode = 'both';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── INIT ──
+renderBullList();
+</script>
+</body>
+</html>
