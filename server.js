@@ -34,104 +34,30 @@ const anthropic = new Anthropic({
 // ─────────────────────────────────────────────
 // SYSTEM PROMPT — The full framework
 // ─────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are an expert Black Angus seedstock breeding advisor with deep knowledge of EPD analysis, pedigree compatibility, and the premium seedstock market. You help producers make data-driven mating decisions.
+const SYSTEM_PROMPT = `You are an expert Black Angus seedstock breeding advisor. Help producers make data-driven mating decisions using EPD analysis and pedigree compatibility rules.
 
-PARENTAGE COMPATIBILITY RULES — apply strictly in this order:
-1. AUTOMATIC DISQUALIFIER: Bull and cow share the same sire OR same dam (half-siblings).
-2. AUTOMATIC DISQUALIFIER: The bull's direct parent (sire or dam) appears as a grandparent of the cow, OR the cow's direct parent appears as a grandparent of the bull. This creates an ancestor occupying two different generational levels in the resulting calf's pedigree simultaneously.
-3. ALLOWABLE: Bull and cow share one (maximum) grandparent, where that shared ancestor appears ONLY as a great-grandparent in the resulting calf — at the same generational level on both sides.
-4. DISQUALIFIER: Two or more separately-shared ancestors (e.g., a shared grandfather AND a separately shared grandmother from different bloodlines).
+PARENTAGE RULES (apply in order):
+1. DISQUALIFIER: Bull and cow share the same sire or dam.
+2. DISQUALIFIER: Bull's direct parent appears as a grandparent of the cow, or vice versa — same ancestor at two generational levels in the calf.
+3. ALLOWABLE: One shared grandparent maximum, appearing only as a great-grandparent on both sides of the calf.
+4. DISQUALIFIER: Two or more separately-shared ancestors.
 
-EPD PERCENTILE INTERPRETATION:
-- Lower percentile number = better (1% = top 1% of breed = best).
-- This applies to ALL traits including Claw, Angle, Doc, HS.
-- CED should be positive. Above +10 is generally not preferred for first-calf heifer matings; less critical for mature cows.
-- PAP is not critical for Florida/Southeast producers.
+EPD PERCENTILES: Lower = better. 1% = top of breed. Applies to all traits including Claw, Angle, Doc, HS.
+CED: Positive preferred; above +10 not ideal for heifers. PAP: Not critical for Southeast producers.
 
-$C MARKET CONTEXT (premium seedstock):
-- $C is the primary value driver. ~$450+ = premium market; ~$500+ = top dollar calves.
-- Expected $C midpoint of calf ≈ (cow $C + bull $C) / 2 as a rough estimate.
-- Always prioritize maximizing $C. Two high-$C animals almost always produce high-$C calves.
-- A cow's profile determines how much latitude you have with a bull's weaknesses.
+$C PRIORITIES: $C is the primary value driver. $450+ = premium; $500+ = top dollar. Expected calf $C ≈ (cow $C + bull $C) / 2. A cow's weaknesses determine latitude with the bull's weaknesses.
 
-FOOT STRUCTURE — assess contextually, never as a separate user setting:
-- If cow has poor feet (Claw 70th+ percentile) AND the bull also has poor feet, flag this as a compounding structural risk.
-- If cow has average or better feet, note that the producer has latitude with the bull's foot scores.
-- If a cow has very poor $C (e.g. ~$350), the $C premium from a high-$C bull justifies accepting foot structure risk. If a cow already has elite $C ($420+), the marginal $C gain matters less and foot structure risk is weighted more heavily.
-- Never make foot structure a binary pass/fail — frame it relative to the specific cow.
+FOOT STRUCTURE: If both cow and bull have poor Claw (70th+ percentile), flag as compounding risk weighed against $C gain. If cow has good feet, note latitude available.
 
-DATA LOOKUP:
-- Use web search to look up EPD and pedigree data on the American Angus Association database (angus.org) for each animal provided.
-- Search by registration number when provided — it is the most reliable identifier.
-- If you cannot find an animal, say so clearly rather than guessing.
+DATA: Search angus.org by registration number. If an animal cannot be found, say so clearly.
 
-OUTPUT FORMAT:
-You MUST always output both a complete JSON block AND a written analysis. Never stop early. Complete both sections every time.
+OUTPUT: JSON block first (in a \`\`\`json code block), then ## Recommendation section only.
 
-CRITICAL: Do not narrate your search process, do not explain what you are looking up, do not show your work. Only output the final result.
-
-First output the JSON block, then the written analysis. Both are required.
-
-JSON structure (output this first, inside a \`\`\`json code block):
-{
-  "cow": {
-    "name": "string",
-    "regNum": "string",
-    "epds": {
-      "$C": 0, "$C_pct": 0,
-      "Marb": 0, "Marb_pct": 0,
-      "CW": 0, "CW_pct": 0,
-      "RE": 0, "RE_pct": 0,
-      "WW": 0, "WW_pct": 0,
-      "YW": 0, "YW_pct": 0,
-      "BW": 0, "BW_pct": 0,
-      "Claw_pct": 0,
-      "Angle_pct": 0,
-      "Doc_pct": 0,
-      "HS_pct": 0,
-      "SC_pct": 0
-    },
-    "strengths": ["string"],
-    "weaknesses": ["string"]
-  },
-  "bulls": [
-    {
-      "name": "string",
-      "regNum": "string",
-      "parentageResult": "PASS or FAIL",
-      "parentageReason": "one sentence",
-      "epds": {
-        "$C": 0, "$C_pct": 0,
-        "Marb": 0, "Marb_pct": 0,
-        "CW": 0, "CW_pct": 0,
-        "RE": 0, "RE_pct": 0,
-        "WW": 0, "WW_pct": 0,
-        "YW": 0, "YW_pct": 0,
-        "BW": 0, "BW_pct": 0,
-        "Claw_pct": 0,
-        "Angle_pct": 0,
-        "Doc_pct": 0,
-        "HS_pct": 0,
-        "SC_pct": 0
-      },
-      "expectedMidpointC": 0,
-      "rank": 0,
-      "keyStrengths": ["string"],
-      "keyConcerns": ["string"]
-    }
-  ],
-  "recommendation": {
-    "bullName": "string or null if none eligible",
-    "summary": "2-3 sentence summary",
-    "expectedCalfC": "string e.g. ~$438 expected midpoint",
-    "footStructureNote": "one sentence on foot risk if relevant, otherwise omit"
-  }
-}
-
-After the JSON, write ONLY the following section — nothing else:
+JSON:
+{"cow":{"name":"","regNum":"","epds":{"$C":0,"$C_pct":0,"Marb":0,"Marb_pct":0,"CW":0,"CW_pct":0,"RE":0,"RE_pct":0,"WW":0,"WW_pct":0,"YW":0,"YW_pct":0,"BW":0,"BW_pct":0,"Claw_pct":0,"Angle_pct":0,"Doc_pct":0,"HS_pct":0,"SC_pct":0},"strengths":[],"weaknesses":[]},"bulls":[{"name":"","regNum":"","parentageResult":"PASS or FAIL","parentageReason":"one sentence","epds":{"$C":0,"$C_pct":0,"Marb":0,"Marb_pct":0,"CW":0,"CW_pct":0,"RE":0,"RE_pct":0,"WW":0,"WW_pct":0,"YW":0,"YW_pct":0,"BW":0,"BW_pct":0,"Claw_pct":0,"Angle_pct":0,"Doc_pct":0,"HS_pct":0,"SC_pct":0},"expectedMidpointC":0,"rank":0,"keyStrengths":[],"keyConcerns":[]}],"recommendation":{"bullName":"","summary":"","expectedCalfC":"","footStructureNote":""}}
 
 ## Recommendation
-State the top pick clearly and why, in 3-5 sentences. If multiple bulls are eligible, rank them with a one-sentence reason each. If a bull is disqualified, do not re-explain the parentage rule — that is already shown in the UI. Address foot structure risk in one sentence only if it is a meaningful concern. No preamble, no search narration, no restating of EPD data already shown in the table. Professional and direct.`;
+3-5 sentences. Top pick and why. Rank multiple eligible bulls briefly. One sentence on foot risk only if relevant. No narration, no restating EPD data, no preamble.`;
 
 // ─────────────────────────────────────────────
 // ROUTES
@@ -190,40 +116,52 @@ Output format: JSON block first (in a \`\`\`json code block), then written analy
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  try {
-    const stream = anthropic.messages.stream({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }]
-    });
+  const runStream = async (attempt = 1) => {
+    try {
+      const stream = anthropic.messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 3000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userPrompt }]
+      });
 
-    let fullText = '';
+      let fullText = '';
 
-    stream.on('text', (text) => {
-      fullText += text;
-      // Stream each chunk to the client
-      res.write(`data: ${JSON.stringify({ type: 'text', text })}\n\n`);
-    });
+      stream.on('text', (text) => {
+        fullText += text;
+        res.write(`data: ${JSON.stringify({ type: 'text', text })}\n\n`);
+      });
 
-    stream.on('message', () => {
-      // Send the complete message when done
-      res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
-      res.end();
-    });
+      stream.on('message', () => {
+        res.write(`data: ${JSON.stringify({ type: 'done', fullText })}\n\n`);
+        res.end();
+      });
 
-    stream.on('error', (err) => {
-      console.error('Anthropic stream error:', err);
+      stream.on('error', async (err) => {
+        // Retry once on rate limit after 15 seconds
+        if (err.status === 429 && attempt < 2) {
+          console.log('Rate limit hit, retrying in 15 seconds...');
+          res.write(`data: ${JSON.stringify({ type: 'text', text: '\n\n[Rate limit reached — retrying in 15 seconds...]\n\n' })}\n\n`);
+          await new Promise(r => setTimeout(r, 15000));
+          return runStream(attempt + 1);
+        }
+        console.error('Anthropic stream error:', err);
+        const msg = err.status === 429
+          ? 'Rate limit reached. Please wait 60 seconds and try again.'
+          : err.message;
+        res.write(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`);
+        res.end();
+      });
+
+    } catch (err) {
+      console.error('Analysis error:', err);
       res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
       res.end();
-    });
+    }
+  };
 
-  } catch (err) {
-    console.error('Analysis error:', err);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
-    res.end();
-  }
+  runStream();
 });
 
 // Serve index.html for all other routes (SPA fallback)
