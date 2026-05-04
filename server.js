@@ -53,97 +53,88 @@ async function fetchAnimalData(regNum) {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
 
-    // Go to search page
-    await page.goto('https://www.angus.org/Animal/EpdPedSearch', {
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
+    // Set longer timeouts
+    page.setDefaultTimeout(45000);
+    page.setDefaultNavigationTimeout(45000);
 
-    // Fill registration number field
-    const inputFilled = await page.evaluate((regNum) => {
-      const selectors = [
-        'input[name="sRegNum"]',
-        'input[id*="RegNum"]',
-        'input[id*="regNum"]',
-        'input[placeholder*="Reg"]',
-        'input[placeholder*="reg"]',
-      ];
-      for (const sel of selectors) {
-        const el = document.querySelector(sel);
-        if (el) {
-          el.value = regNum;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        }
-      }
-      // Fallback: first text input
-      const inputs = document.querySelectorAll('input[type="text"]');
-      if (inputs.length > 0) {
-        inputs[0].value = regNum;
-        inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-        return true;
-      }
-      return false;
-    }, regNum);
+    // ── Step 1: Hit the search results URL directly with reg number ──
+    // This bypasses needing to interact with the search form entirely
+    const searchUrl = `https://www.angus.org/Animal/EpdPedResults?PageRequest=BeefRecords.Services.Models.PageRequest&sRegNum=${regNum}`;
 
-    if (!inputFilled) {
-      throw new Error(`Could not find registration number input for ${regNum}`);
-    }
+    console.log(`Fetching search results for ${regNum}...`);
+    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 45000 });
 
-    // Click search
-    await page.evaluate(() => {
-      const buttons = [...document.querySelectorAll('button, input[type="submit"], input[type="button"]')];
-      const searchBtn = buttons.find(b =>
-        (b.textContent || b.value || '').toLowerCase().includes('search')
-      );
-      if (searchBtn) searchBtn.click();
-    });
-
-    // Wait for result link
+    // Wait for either a result link or a "no results" indicator
     await page.waitForFunction(
-      () => [...document.querySelectorAll('a')].some(a => a.href && a.href.includes('EpdPedDtl')),
-      { timeout: 15000 }
-    );
-
-    // Click first EPD detail link
-    const clicked = await page.evaluate(() => {
-      const links = document.querySelectorAll('a');
-      for (const a of links) {
-        if (a.href && a.href.includes('EpdPedDtl')) {
-          a.click();
-          return true;
-        }
-      }
-      return false;
-    });
-
-    if (!clicked) {
-      throw new Error(`No EPD detail link found for ${regNum}`);
-    }
-
-    // Wait for EPD data to render
-    await page.waitForFunction(
-      () => document.body.innerText.includes('$C') && document.body.innerText.includes('Marb'),
+      () => {
+        const body = document.body.innerText;
+        return body.includes('EpdPedDtl') ||
+               document.querySelector('a[href*="EpdPedDtl"]') !== null ||
+               body.includes('no results') ||
+               body.includes('No results') ||
+               body.length > 2000; // page has loaded something meaningful
+      },
       { timeout: 20000 }
     );
 
-    await new Promise(r => setTimeout(r, 2000));
+    // Log what we got for debugging
+    const pageSnapshot = await page.evaluate(() => ({
+      url: window.location.href,
+      hasDetailLink: !!document.querySelector('a[href*="EpdPedDtl"]'),
+      allLinks: [...document.querySelectorAll('a')].map(a => a.href).filter(h => h.includes('angus')).slice(0, 10),
+      bodyPreview: document.body.innerText.slice(0, 500)
+    }));
+    console.log(`Snapshot for ${regNum}:`, JSON.stringify(pageSnapshot, null, 2));
 
-    // Extract clean text
+    // ── Step 2: Find and click the EPD detail link ──
+    const detailLink = await page.$('a[href*="EpdPedDtl"]');
+
+    if (!detailLink) {
+      // Try navigating directly using the reg number in the URL pattern we know works
+      // Some pages render links with relative paths
+      const allLinks = await page.evaluate(() =>
+        [...document.querySelectorAll('a')].map(a => ({ href: a.href, text: a.textContent.trim() }))
+      );
+      console.log(`No EpdPedDtl link found for ${regNum}. All links:`, JSON.stringify(allLinks.slice(0, 20)));
+      throw new Error(`Animal not found for registration number ${regNum}. Please verify the number at angus.org.`);
+    }
+
+    // Get the href before clicking (in case navigation loses it)
+    const detailHref = await page.evaluate(el => el.href, detailLink);
+    console.log(`Navigating to detail page: ${detailHref}`);
+
+    await page.goto(detailHref, { waitUntil: 'networkidle2', timeout: 45000 });
+
+    // ── Step 3: Wait for EPD data to render ──
+    await page.waitForFunction(
+      () => {
+        const text = document.body.innerText;
+        return text.includes('$C') && (text.includes('Marb') || text.includes('CED'));
+      },
+      { timeout: 25000 }
+    );
+
+    // Extra wait for any remaining JS
+    await new Promise(r => setTimeout(r, 2500));
+
+    // ── Step 4: Extract clean text ──
     const pageData = await page.evaluate(() => {
       const clone = document.body.cloneNode(true);
-      clone.querySelectorAll('script, style, nav, header, footer, .header, .footer, .nav').forEach(el => el.remove());
-      return clone.innerText;
+      clone.querySelectorAll('script, style, nav, header, footer, .header, .footer, .nav, .menu').forEach(el => el.remove());
+      // Clean up excessive whitespace
+      return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
     });
 
+    console.log(`Successfully fetched data for ${regNum}, length: ${pageData.length}`);
     return { success: true, regNum, data: pageData };
 
   } catch (err) {
     console.error(`Puppeteer error for ${regNum}:`, err.message);
     return { success: false, regNum, error: err.message };
   } finally {
-    if (browser) await browser.close();
+    if (browser) {
+      await browser.close().catch(e => console.error('Browser close error:', e));
+    }
   }
 }
 
@@ -180,6 +171,21 @@ JSON:
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Diagnostic endpoint — test Puppeteer fetch for a single reg number
+// Usage: /api/test-fetch/21179283
+app.get('/api/test-fetch/:regNum', async (req, res) => {
+  const { regNum } = req.params;
+  console.log(`Test fetch for: ${regNum}`);
+  const result = await fetchAnimalData(regNum);
+  res.json({
+    success: result.success,
+    regNum: result.regNum,
+    error: result.error || null,
+    dataLength: result.data ? result.data.length : 0,
+    dataPreview: result.data ? result.data.slice(0, 1000) : null
+  });
 });
 
 app.post('/api/analyze', analysisLimiter, async (req, res) => {
