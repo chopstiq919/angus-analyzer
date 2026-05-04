@@ -652,9 +652,9 @@
       <div class="input-row">
         <div class="input-group">
           <div class="input-label">Cow Name or Registration Number</div>
-          <input type="text" id="cowInput" placeholder="e.g. B I G Home Run of 1962 B506  or  21193816"
+          <input type="text" id="cowInput" placeholder="e.g. 21193816"
             onkeydown="if(event.key==='Enter'){event.preventDefault();setCow();}" />
-          <div class="helper">AAA registration number gives the most accurate EPD lookup</div>
+          <div class="helper">AAA registration number — found on the animal's papers or angus.org</div>
         </div>
         <div style="padding-top:22px;">
           <button class="btn btn-primary" onclick="setCow()">Set Cow →</button>
@@ -785,7 +785,7 @@ function renderBullList() {
       <div class="bull-number">${i + 1}</div>
       <input type="text"
         id="bull-input-${b.id}"
-        placeholder="Name or registration number"
+        placeholder="AAA registration number"
         value="${b.value}"
         oninput="updateBull(${b.id}, this.value)"
         onblur="checkShowConfig()"
@@ -857,12 +857,11 @@ async function runAnalysis() {
   document.getElementById('resultsContent').innerHTML = `
     <div class="loading-state">
       <div class="loading-spinner"></div>
-      <div class="loading-status">
-        Looking up EPD data on angus.org and running analysis...<br>
-        <span style="font-size:10px;margin-top:4px;display:block;">This takes 15–30 seconds</span>
+      <div class="loading-status" id="loadingStatus">
+        Connecting to angus.org...<br>
+        <span style="font-size:10px;margin-top:4px;display:block;">This takes 20–40 seconds</span>
       </div>
-    </div>
-    <div class="streaming-block" id="streamingBlock" style="display:none;"></div>`;
+    </div>`;
 
   scrollTo('resultsSection');
 
@@ -889,7 +888,6 @@ async function runAnalysis() {
     const decoder = new TextDecoder();
     let buffer = '';
     let fullText = '';
-    let streamEl = document.getElementById('streamingBlock');
 
     while (true) {
       const { done, value } = await reader.read();
@@ -904,15 +902,13 @@ async function runAnalysis() {
         try {
           const event = JSON.parse(line.slice(6));
 
+          if (event.type === 'status') {
+            const statusEl = document.getElementById('loadingStatus');
+            if (statusEl) statusEl.innerHTML = event.message + '<br><span style="font-size:10px;margin-top:4px;display:block;">This takes 20–40 seconds</span>';
+          }
+
           if (event.type === 'text') {
             fullText += event.text;
-            // Show streaming text preview
-            if (streamEl.style.display === 'none') {
-              streamEl.style.display = 'block';
-              document.querySelector('.loading-state').style.display = 'none';
-            }
-            streamEl.innerHTML = escapeHtml(fullText) + '<span class="streaming-cursor"></span>';
-            streamEl.scrollTop = streamEl.scrollHeight;
           }
 
           if (event.type === 'done') {
