@@ -1073,12 +1073,16 @@ function renderResults(rawText) {
     }
   }
 
-  // Written analysis
+  // Written analysis — extract only the Recommendation section
   if ((outputMode === 'analysis' || outputMode === 'both') && writtenAnalysis?.trim()) {
+    // Pull out just the ## Recommendation section
+    const recMatch = writtenAnalysis.match(/##\s*Recommendation[\s\S]*/i);
+    const recText = recMatch ? recMatch[0] : writtenAnalysis;
+
     html += `
       <div class="analysis-block">
-        <h3>Detailed Analysis</h3>
-        <div class="analysis-text">${formatAnalysis(writtenAnalysis.trim())}</div>
+        <h3>Recommendation</h3>
+        <div class="analysis-text">${formatAnalysis(recText.replace(/##\s*Recommendation/i, '').trim())}</div>
       </div>`;
   }
 

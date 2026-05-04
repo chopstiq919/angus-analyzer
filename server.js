@@ -128,22 +128,10 @@ JSON structure (output this first, inside a \`\`\`json code block):
   }
 }
 
-After the JSON, write the WRITTEN ANALYSIS in this exact format — concise, professional, executive summary style. Use bold headers. No stream-of-consciousness, no narration of your search process, no filler.
-
-## Parentage Filter
-For each bull, one line: name — PASS or FAIL — one-sentence reason.
-
-## Cow Profile
-Two to three sentences max. Her $C, key carcass strengths, and any notable weaknesses.
-
-## Bull Rankings (eligible bulls only, ranked by recommendation)
-For each eligible bull:
-**#1 — [Bull Name]** — Expected $C midpoint: ~$XXX
-- Why recommended: 2-3 bullet points on key strengths relative to this cow
-- Concerns: 1-2 bullet points if any
+After the JSON, write ONLY the following section — nothing else:
 
 ## Recommendation
-One clear paragraph. State the top pick and why. If foot structure is a concern, address it in one sentence. No hedging, no lengthy caveats.`;
+State the top pick clearly and why, in 3-5 sentences. If multiple bulls are eligible, rank them with a one-sentence reason each. If a bull is disqualified, do not re-explain the parentage rule — that is already shown in the UI. Address foot structure risk in one sentence only if it is a meaningful concern. No preamble, no search narration, no restating of EPD data already shown in the table. Professional and direct.`;
 
 // ─────────────────────────────────────────────
 // ROUTES
