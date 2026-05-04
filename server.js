@@ -66,9 +66,13 @@ DATA LOOKUP:
 - If you cannot find an animal, say so clearly rather than guessing.
 
 OUTPUT FORMAT:
-Respond with a JSON block followed by a written analysis section.
+You MUST always output both a complete JSON block AND a written analysis. Never stop early. Complete both sections every time.
 
-JSON structure (output this first, in a code block):
+CRITICAL: Do not narrate your search process, do not explain what you are looking up, do not show your work. Only output the final result.
+
+First output the JSON block, then the written analysis. Both are required.
+
+JSON structure (output this first, inside a \`\`\`json code block):
 {
   "cow": {
     "name": "string",
@@ -94,8 +98,8 @@ JSON structure (output this first, in a code block):
     {
       "name": "string",
       "regNum": "string",
-      "parentageResult": "PASS",
-      "parentageReason": "one sentence explaining why it passes or fails",
+      "parentageResult": "PASS or FAIL",
+      "parentageReason": "one sentence",
       "epds": {
         "$C": 0, "$C_pct": 0,
         "Marb": 0, "Marb_pct": 0,
@@ -111,24 +115,35 @@ JSON structure (output this first, in a code block):
         "SC_pct": 0
       },
       "expectedMidpointC": 0,
+      "rank": 0,
       "keyStrengths": ["string"],
       "keyConcerns": ["string"]
     }
   ],
   "recommendation": {
     "bullName": "string or null if none eligible",
-    "summary": "2-3 sentence summary of why this bull was chosen",
+    "summary": "2-3 sentence summary",
     "expectedCalfC": "string e.g. ~$438 expected midpoint",
-    "footStructureNote": "string — contextual note about foot risk for this specific pairing"
+    "footStructureNote": "one sentence on foot risk if relevant, otherwise omit"
   }
 }
 
-After the JSON, write a detailed analysis covering:
-1. Cow profile — her $C level, key strengths and weaknesses, foot structure position in the breed
-2. Parentage filter — result for each bull with one-line reason
-3. EPD comparison of eligible bulls — weight toward the producer's stated priority $Values, then carcass and growth
-4. Foot structure assessment relative to the cow's specific profile
-5. Final recommendation with clear reasoning`;
+After the JSON, write the WRITTEN ANALYSIS in this exact format — concise, professional, executive summary style. Use bold headers. No stream-of-consciousness, no narration of your search process, no filler.
+
+## Parentage Filter
+For each bull, one line: name — PASS or FAIL — one-sentence reason.
+
+## Cow Profile
+Two to three sentences max. Her $C, key carcass strengths, and any notable weaknesses.
+
+## Bull Rankings (eligible bulls only, ranked by recommendation)
+For each eligible bull:
+**#1 — [Bull Name]** — Expected $C midpoint: ~$XXX
+- Why recommended: 2-3 bullet points on key strengths relative to this cow
+- Concerns: 1-2 bullet points if any
+
+## Recommendation
+One clear paragraph. State the top pick and why. If foot structure is a concern, address it in one sentence. No hedging, no lengthy caveats.`;
 
 // ─────────────────────────────────────────────
 // ROUTES

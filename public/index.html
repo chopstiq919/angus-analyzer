@@ -8,21 +8,21 @@
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
   :root {
-    --bg: #1c1a16;
-    --surface: #252219;
-    --surface2: #2e2a1f;
-    --border: #3d3828;
-    --border2: #524d3a;
-    --gold: #c9a84c;
-    --gold2: #e8c96a;
-    --gold-dim: #9a7e3a;
-    --text: #f0e8d8;
-    --text2: #c8b896;
-    --text3: #8a7d65;
-    --green: #5aac70;
-    --green-bg: #1e3326;
-    --red: #b05a5a;
-    --red-bg: #361e1e;
+    --bg: #f5f0e8;
+    --surface: #ffffff;
+    --surface2: #f0ebe0;
+    --border: #d8cdb8;
+    --border2: #c8bda8;
+    --gold: #9a6e28;
+    --gold2: #b8882e;
+    --gold-dim: #b89050;
+    --text: #1e1a14;
+    --text2: #4a3f2e;
+    --text3: #8a7a60;
+    --green: #2a6e3e;
+    --green-bg: #e8f5ee;
+    --red: #8c2e2e;
+    --red-bg: #faeaea;
     --radius: 6px;
   }
 
@@ -45,13 +45,7 @@
   }
 
   body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0.4;
+    display: none;
   }
 
   .header {
@@ -60,7 +54,7 @@
     display: flex;
     align-items: flex-end;
     gap: 20px;
-    background: linear-gradient(180deg, #232018 0%, var(--bg) 100%);
+    background: linear-gradient(180deg, #2a2318 0%, #3d3020 100%);
   }
 
   .header-eyebrow {
@@ -68,7 +62,7 @@
     font-size: 10px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--gold);
+    color: #c9a84c;
     margin-bottom: 2px;
   }
 
@@ -76,14 +70,14 @@
     font-family: 'Playfair Display', serif;
     font-size: 28px;
     font-weight: 900;
-    color: var(--text);
+    color: #f5ede0;
     letter-spacing: -0.02em;
     line-height: 1;
   }
 
   .header-sub {
     font-size: 12px;
-    color: var(--text3);
+    color: #8a7860;
     margin-left: auto;
     font-family: 'IBM Plex Mono', monospace;
     letter-spacing: 0.05em;
@@ -397,11 +391,47 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .analysis-text { color: var(--text2); font-size: 13px; line-height: 1.8; }
+  .analysis-text { color: var(--text2); font-size: 14px; line-height: 1.8; }
+
+  .analysis-h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 20px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analysis-h3 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 14px 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .analysis-bullet {
+    padding: 3px 0 3px 18px;
+    position: relative;
+    color: var(--text2);
+    font-size: 13px;
+  }
+
+  .analysis-bullet::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--gold-dim);
+  }
+
+  .analysis-p { margin-top: 10px; color: var(--text2); font-size: 14px; line-height: 1.8; }
 
   .recommendation-box {
-    background: linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%);
-    border: 1px solid rgba(201,168,76,0.3);
+    background: linear-gradient(135deg, #fdf8ee 0%, #f8f2e4 100%);
+    border: 1px solid #d4b870;
     border-radius: var(--radius);
     padding: 20px 24px;
     margin-bottom: 24px;
@@ -416,7 +446,7 @@
     margin-bottom: 6px;
   }
 
-  .rec-value { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--gold2); }
+  .rec-value { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--gold); }
   .rec-reason { font-size: 13px; color: var(--text2); margin-top: 8px; line-height: 1.6; }
 
   .foot-note {
@@ -462,7 +492,7 @@
   }
 
   .streaming-block {
-    background: var(--surface);
+    background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px 24px;
@@ -472,7 +502,7 @@
     color: var(--text2);
     line-height: 1.8;
     white-space: pre-wrap;
-    max-height: 300px;
+    max-height: 200px;
     overflow-y: auto;
   }
 
@@ -1070,9 +1100,17 @@ function escapeHtml(t) {
 
 function formatAnalysis(text) {
   return escapeHtml(text)
-    .replace(/\n\n/g, '</p><p style="margin-top:12px;">')
-    .replace(/\n/g, '<br>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text)">$1</strong>');
+    // H2 headers -> styled divs
+    .replace(/^## (.+)$/gm, '<div class="analysis-h2">$1</div>')
+    // H3 headers
+    .replace(/^### (.+)$/gm, '<div class="analysis-h3">$1</div>')
+    // Bold
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Bullet points
+    .replace(/^- (.+)$/gm, '<div class="analysis-bullet">$1</div>')
+    // Paragraphs
+    .replace(/\n\n/g, '</p><p class="analysis-p">')
+    .replace(/\n/g, '<br>');
 }
 
 function scrollTo(id) {
