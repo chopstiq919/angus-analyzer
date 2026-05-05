@@ -119,7 +119,12 @@ async function fetchAnimalData(regNum) {
     // ── Step 6: Extract clean text ──
     const pageData = await page.evaluate(() => {
       const clone = document.body.cloneNode(true);
-      clone.querySelectorAll('script, style, nav, header, footer, .header, .footer, .nav, .menu').forEach(el => el.remove());
+      // Remove noise elements
+      clone.querySelectorAll(
+        'script, style, nav, header, footer, .header, .footer, .nav, .menu, ' +
+        '[class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"], ' +
+        '[class*="cky"], [id*="cky"], iframe'
+      ).forEach(el => el.remove());
       return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
     });
 
@@ -206,8 +211,9 @@ app.get('/api/test-fetch/:regNum', async (req, res) => {
     regNum: result.regNum,
     error: result.error || null,
     dataLength: result.data ? result.data.length : 0,
-    dataPreview: result.data ? result.data.slice(0, 2000) : null,
-    snapshot: result.snapshot || null
+    dataStart: result.data ? result.data.slice(0, 500) : null,
+    dataMiddle: result.data ? result.data.slice(3000, 6000) : null,
+    dataEnd: result.data ? result.data.slice(-2000) : null
   });
 });
 
