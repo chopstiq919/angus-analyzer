@@ -55,64 +55,76 @@ async function fetchAnimalData(regNum) {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
 
-    // ── Step 1: Try the search results page with reg number ──
-    // Try the most likely parameter name first
-    const searchUrl = `https://www.angus.org/Animal/EpdPedResults?PageRequest=BeefRecords.Services.Models.PageRequest&sRegNum=${regNum}&sNameSearchOption=0`;
-    console.log(`Navigating to: ${searchUrl}`);
-
+    // Navigate to the search page
+    const searchUrl = `https://www.angus.org/Find-An-Animal`;
+    console.log(`Navigating to search page for ${regNum}...`);
     await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    await new Promise(r => setTimeout(r, 2000));
 
-    // Wait for page to settle
-    await new Promise(r => setTimeout(r, 3000));
-
-    // Snapshot what we got
-    const snapshot = await page.evaluate(() => ({
-      url: window.location.href,
-      title: document.title,
-      bodyText: document.body.innerText.slice(0, 2000),
-      allLinks: [...document.querySelectorAll('a')]
-        .map(a => ({ text: a.textContent.trim().slice(0, 50), href: a.href }))
-        .filter(l => l.href && l.href.includes('angus'))
-        .slice(0, 20),
-      allInputs: [...document.querySelectorAll('input')]
-        .map(i => ({ name: i.name, id: i.id, type: i.type, placeholder: i.placeholder }))
-        .slice(0, 10)
-    }));
-
-    console.log('Page snapshot:', JSON.stringify(snapshot, null, 2));
-
-    // ── Step 2: Look for EPD detail link ──
-    const detailLink = await page.$('a[href*="EpdPedDtl"]');
-
-    if (detailLink) {
-      const detailHref = await page.evaluate(el => el.href, detailLink);
-      console.log(`Found detail link: ${detailHref}`);
-
-      await page.goto(detailHref, { waitUntil: 'networkidle2', timeout: 60000 });
-      await new Promise(r => setTimeout(r, 3000));
-
-      // Wait for EPD data
-      await page.waitForFunction(
-        () => document.body.innerText.includes('$C') && document.body.innerText.includes('Marb'),
-        { timeout: 30000 }
-      );
-
-      const pageData = await page.evaluate(() => {
-        const clone = document.body.cloneNode(true);
-        clone.querySelectorAll('script, style, nav, header, footer, .header, .footer, .nav, .menu').forEach(el => el.remove());
-        return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
-      });
-
-      return { success: true, regNum, data: pageData, snapshot };
+    // ── Step 1: Dismiss cookie consent if present ──
+    try {
+      const acceptBtn = await page.$('button[onclick*="Accept"], button[data-cky-tag="accept-button"], .cky-btn-accept');
+      if (acceptBtn) {
+        await acceptBtn.click();
+        console.log('Clicked cookie accept button');
+        await new Promise(r => setTimeout(r, 1000));
+      } else {
+        // Try finding by text content
+        await page.evaluate(() => {
+          const buttons = [...document.querySelectorAll('button')];
+          const accept = buttons.find(b => b.textContent.trim().includes('Accept All'));
+          if (accept) accept.click();
+        });
+        await new Promise(r => setTimeout(r, 1000));
+        console.log('Dismissed cookie popup via text search');
+      }
+    } catch(e) {
+      console.log('No cookie popup found or could not dismiss:', e.message);
     }
 
-    // No detail link found — return snapshot for debugging
-    return {
-      success: false,
-      regNum,
-      error: `No EPD detail link found on results page. Page title: "${snapshot.title}". Body preview: ${snapshot.bodyText.slice(0, 300)}`,
-      snapshot
-    };
+    // ── Step 2: Fill the registration number field (confirmed field name) ──
+    await page.waitForSelector('#EpdPedSearchRequest_sAnimalRegNum', { timeout: 10000 });
+    await page.click('#EpdPedSearchRequest_sAnimalRegNum');
+    await page.type('#EpdPedSearchRequest_sAnimalRegNum', regNum);
+    console.log(`Typed reg number: ${regNum}`);
+
+    // ── Step 3: Submit the form ──
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+      page.click('input[type="submit"]')
+    ]);
+    console.log('Form submitted, waiting for results...');
+    await new Promise(r => setTimeout(r, 2000));
+
+    // ── Step 4: Find and click the EPD detail link ──
+    const detailLink = await page.$('a[href*="EpdPedDtl"]');
+
+    if (!detailLink) {
+      const bodyPreview = await page.evaluate(() => document.body.innerText.slice(0, 500));
+      throw new Error(`No EPD detail link found. Page content: ${bodyPreview}`);
+    }
+
+    const detailHref = await page.evaluate(el => el.href, detailLink);
+    console.log(`Navigating to EPD detail: ${detailHref}`);
+
+    await page.goto(detailHref, { waitUntil: 'networkidle2', timeout: 60000 });
+    await new Promise(r => setTimeout(r, 3000));
+
+    // ── Step 5: Wait for EPD data to render ──
+    await page.waitForFunction(
+      () => document.body.innerText.includes('$C') && document.body.innerText.includes('Marb'),
+      { timeout: 30000 }
+    );
+
+    // ── Step 6: Extract clean text ──
+    const pageData = await page.evaluate(() => {
+      const clone = document.body.cloneNode(true);
+      clone.querySelectorAll('script, style, nav, header, footer, .header, .footer, .nav, .menu').forEach(el => el.remove());
+      return clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
+    });
+
+    console.log(`Successfully fetched data for ${regNum}, length: ${pageData.length}`);
+    return { success: true, regNum, data: pageData };
 
   } catch (err) {
     console.error(`Puppeteer error for ${regNum}:`, err.message);
