@@ -34,9 +34,19 @@ const anthropic = new Anthropic({
 async function fetchAnimalData(regNum) {
   let browser;
   try {
-    browser = await puppeteer.launch({
+    // Find chromium executable — try common Railway/nixpacks locations
+    const { execSync } = require('child_process');
+    let chromiumPath;
+    try {
+      chromiumPath = execSync('which chromium-browser || which chromium || which google-chrome || which google-chrome-stable', { encoding: 'utf8' }).trim().split('\n')[0];
+      console.log(`Found chromium at: ${chromiumPath}`);
+    } catch(e) {
+      console.log('Could not find chromium via which, letting puppeteer use default');
+      chromiumPath = undefined;
+    }
+
+    const launchOptions = {
       headless: 'new',
-      executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -46,7 +56,11 @@ async function fetchAnimalData(regNum) {
         '--no-zygote',
         '--single-process'
       ]
-    });
+    };
+
+    if (chromiumPath) launchOptions.executablePath = chromiumPath;
+
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     page.setDefaultTimeout(60000);
@@ -158,6 +172,30 @@ JSON:
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Diagnostic endpoint — check where chromium is installed
+app.get('/api/check-chromium', (req, res) => {
+  const { execSync } = require('child_process');
+  const checks = {};
+  const paths = [
+    'which chromium',
+    'which chromium-browser',
+    'which google-chrome',
+    'which google-chrome-stable',
+    'ls /usr/bin/chrom*',
+    'ls /nix/store/ | grep chrom | head -5',
+    'find /nix -name "chromium" -type f 2>/dev/null | head -5',
+    'find /usr -name "chrom*" -type f 2>/dev/null | head -5'
+  ];
+  for (const cmd of paths) {
+    try {
+      checks[cmd] = execSync(cmd, { encoding: 'utf8', timeout: 5000 }).trim();
+    } catch(e) {
+      checks[cmd] = `not found: ${e.message.slice(0, 50)}`;
+    }
+  }
+  res.json(checks);
 });
 
 // Diagnostic endpoint — test Puppeteer fetch for a single reg number
