@@ -34,18 +34,7 @@ const anthropic = new Anthropic({
 async function fetchAnimalData(regNum) {
   let browser;
   try {
-    // Find chromium executable — try common Railway/nixpacks locations
-    const { execSync } = require('child_process');
-    let chromiumPath;
-    try {
-      chromiumPath = execSync('which chromium-browser || which chromium || which google-chrome || which google-chrome-stable', { encoding: 'utf8' }).trim().split('\n')[0];
-      console.log(`Found chromium at: ${chromiumPath}`);
-    } catch(e) {
-      console.log('Could not find chromium via which, letting puppeteer use default');
-      chromiumPath = undefined;
-    }
-
-    const launchOptions = {
+    browser = await puppeteer.launch({
       headless: 'new',
       args: [
         '--no-sandbox',
@@ -56,11 +45,7 @@ async function fetchAnimalData(regNum) {
         '--no-zygote',
         '--single-process'
       ]
-    };
-
-    if (chromiumPath) launchOptions.executablePath = chromiumPath;
-
-    browser = await puppeteer.launch(launchOptions);
+    });
 
     const page = await browser.newPage();
     page.setDefaultTimeout(60000);
