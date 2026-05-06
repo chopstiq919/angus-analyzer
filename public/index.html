@@ -1054,7 +1054,7 @@ function renderWithData(jsonData) {
     html += `<div class="section-label" style="margin-top:8px;">Expected Calf EPDs</div>`;
     html += `<table class="comparison-table"><thead><tr>
       <th>Trait</th>
-      <th>Cow</th>
+      <th class="bull-col">Cow</th>
       ${eligible.map(b => `<th class="bull-col">${b.name?.split(' ').slice(-2).join(' ') || 'Bull'}</th>`).join('')}
       ${showCalfCol ? `<th class="bull-col" style="color:var(--gold);">Expected Calf</th>` : ''}
     </tr></thead><tbody>`;
