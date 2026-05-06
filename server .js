@@ -193,7 +193,14 @@ EPD PERCENTILES: Lower = better. 1% = top of breed. Applies to ALL traits includ
 
 $C MARKET: $450+ = premium; $500+ = top dollar. Expected calf $C = (cow $C + bull $C) / 2.
 
-OUTPUT FORMAT — Skip all reasoning and explanation. Output ONLY the data block below with no text before or after it. The ===DATA=== and ===END=== markers are required.
+EXPECTED CALF EPD: For each trait, midpoint = (cow EPD + bull EPD) / 2. Convert to approximate breed percentile.
+
+THRESHOLD FLAGS (informational only — never disqualifiers):
+- Flag ANY trait where expected calf percentile is 90th or worse (bottom 10%)
+- Flag CED, MH, or Milk where expected calf percentile is 10th or better (too extreme favorable)
+- Flag CED or BW where expected calf percentile is 5th or better (extremely low BW or extreme CE can produce narrow/weak calves)
+
+OUTPUT FORMAT — output ONLY the data block below. You may reason first, but your final output must end with this exact block starting with the line "===DATA===":
 
 ===DATA===
 COW_NAME: [name]
@@ -249,6 +256,8 @@ BULL1_MILK: [value]
 BULL1_MILK_PCT: [percentile]
 BULL1_SC_PCT: [percentile]
 BULL1_MIDPOINT_C: [expected calf $C midpoint number only]
+BULL1_FLAG: [flag text or leave blank]
+BULL1_FLAG: [additional flag if needed, repeat this line for each flag]
 ===END===
 
 For multiple bulls, repeat BULL1_ block as BULL2_, BULL3_, etc.
@@ -374,7 +383,7 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
       try {
         const stream = anthropic.messages.stream({
           model: 'claude-sonnet-4-6',
-          max_tokens: 6000,
+          max_tokens: 3000,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }]
         });
@@ -473,82 +482,6 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
             if (firstEligible) {
               parsed.recommendation.expectedCalfC = `~$${firstEligible.expectedMidpointC}`;
             }
-
-            // ── Calculate flags server-side from actual midpoint percentiles ──
-            const cowE = parsed.cow.epds;
-            const midPct = (cowKey, bullKey) => {
-              const c = cowE[cowKey];
-              const b = bullKey; // already a number
-              if (c == null || b == null) return null;
-              return Math.round((c + b) / 2);
-            };
-
-            // Trait definitions for flag calculation
-            const pctTraits = [
-              { label: 'Claw', cowKey: 'Claw_pct' },
-              { label: 'Angle', cowKey: 'Angle_pct' },
-              { label: 'Doc', cowKey: 'Doc_pct' },
-              { label: 'HS', cowKey: 'HS_pct' },
-              { label: 'SC', cowKey: 'SC_pct' },
-            ];
-            const valTraits = [
-              { label: '$C', cowKey: '$C_pct', pctSuffix: '_pct', valSuffix: '' },
-              { label: 'Marb', cowKey: 'Marb_pct' },
-              { label: 'CW', cowKey: 'CW_pct' },
-              { label: 'RE', cowKey: 'RE_pct' },
-              { label: 'WW', cowKey: 'WW_pct' },
-              { label: 'YW', cowKey: 'YW_pct' },
-              { label: 'BW', cowKey: 'BW_pct' },
-              { label: 'CED', cowKey: 'CED_pct' },
-              { label: 'Milk', cowKey: 'Milk_pct' },
-            ];
-
-            parsed.bulls.forEach(bull => {
-              if (bull.parentageResult !== 'PASS') return;
-              const be = bull.epds;
-              const flags = [];
-
-              // Check all percentile-only traits (lower = better, flag at >= 90)
-              pctTraits.forEach(t => {
-                const cp = cowE[t.cowKey];
-                const bp = be[t.cowKey];
-                if (cp == null || bp == null) return;
-                const mid = Math.round((cp + bp) / 2);
-                if (mid >= 90) flags.push(`⚠️ ${t.label}: expected calf avg ~${mid}th percentile — bottom 10% of breed`);
-              });
-
-              // Check value traits with percentile
-              valTraits.forEach(t => {
-                const cp = cowE[t.cowKey];
-                const bp = be[t.cowKey];
-                if (cp == null || bp == null) return;
-                const mid = Math.round((cp + bp) / 2);
-
-                // Bottom 10% flag (>= 90th percentile, lower is better)
-                if (mid >= 90) {
-                  flags.push(`⚠️ ${t.label}: expected calf avg ~${mid}th percentile — bottom 10% of breed`);
-                }
-
-                // Too-extreme favorable flags for CED, Milk (top 10%, <= 10th percentile)
-                if (['CED', 'Milk'].includes(t.label) && mid <= 10) {
-                  if (t.label === 'BW' || t.label === 'CED') {
-                    flags.push(`⚠️ ${t.label}: expected calf avg ~${mid}th percentile — extremely favorable; monitor for narrow/weak calves`);
-                  } else {
-                    flags.push(`⚠️ ${t.label}: expected calf avg ~${mid}th percentile — top 10% extreme; monitor in offspring`);
-                  }
-                }
-
-                // BW and CED top 5% flag (<= 5th percentile)
-                if (['BW', 'CED'].includes(t.label) && mid <= 5) {
-                  // Remove any duplicate flag and add specific one
-                  const idx = flags.findIndex(f => f.includes(t.label));
-                  if (idx !== -1) flags.splice(idx, 1);
-                  flags.push(`⚠️ ${t.label}: expected calf avg ~${mid}th percentile — extremely low; calves may be narrow or weak at birth`);
-                }
-              });
-
-              bull.flags = flags;
-            });
 
             console.log('Parsed:', parsed.cow?.name, parsed.bulls.length, 'bulls');
             sendEvent('done', { parsed });

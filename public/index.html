@@ -334,6 +334,19 @@
   .fail .badge-status { color: #bf6d6d; }
   .badge-reason { font-size: 11px; color: var(--text2); line-height: 1.4; }
 
+  .badge-flags { margin-top: 6px; }
+
+  .flag-item {
+    font-size: 10px;
+    color: #8a6a20;
+    background: #fdf3dc;
+    border: 1px solid #e8c96a;
+    border-radius: 4px;
+    padding: 3px 7px;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
   .comparison-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
 
   .comparison-table th {
@@ -683,15 +696,6 @@
     <div class="section-label">Step 3 — Analysis Preferences</div>
     <div class="card">
 
-      <div class="input-label" style="margin-bottom:8px;">Output Format</div>
-      <div class="mode-toggle">
-        <button class="mode-btn active" data-mode="both" onclick="setMode('both', this)">Table + Written Analysis</button>
-        <button class="mode-btn" data-mode="table" onclick="setMode('table', this)">Table Only</button>
-        <button class="mode-btn" data-mode="analysis" onclick="setMode('analysis', this)">Written Analysis Only</button>
-      </div>
-
-      <hr class="divider">
-
       <div class="input-label" style="margin-bottom:4px;">$Value Priorities</div>
       <div class="helper" style="margin-bottom:10px;">Select the indexes most important to your program — these will be weighted most heavily in the recommendation</div>
       <div class="value-grid" id="valueGrid"></div>
@@ -912,7 +916,11 @@ async function runAnalysis() {
           }
 
           if (event.type === 'done') {
-            renderResults(event.fullText || fullText);
+            if (event.parsed) {
+              renderWithData(event.parsed);
+            } else {
+              renderResults(event.fullText || fullText);
+            }
           }
 
           if (event.type === 'error') {
@@ -935,151 +943,158 @@ async function runAnalysis() {
   document.getElementById('analyzeBtn').disabled = false;
 }
 
+
 // ── RENDER RESULTS ──
+function renderResultsFromData(jsonData) {
+  if (!jsonData) {
+    document.getElementById('resultsContent').innerHTML =
+      `<div class="error-box">Could not parse results. Please try again.</div>`;
+    return;
+  }
+  renderWithData(jsonData);
+}
+
 function renderResults(rawText) {
   let jsonData = null;
-  let writtenAnalysis = rawText;
-
-  // Try to extract JSON block
-  const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) ||
-                    rawText.match(/(\{[\s\S]*?"cow"[\s\S]*?"bulls"[\s\S]*?\})/);
+  const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/);
   if (jsonMatch) {
-    try {
-      jsonData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-      writtenAnalysis = rawText
-        .replace(/```json[\s\S]*?```/, '')
-        .replace(/\{[\s\S]*?"cow"[\s\S]*?"bulls"[\s\S]*?\}/, '')
-        .trim();
-    } catch(e) { console.warn('JSON parse failed', e); }
+    try { jsonData = JSON.parse(jsonMatch[1]); } catch(e) {}
   }
+  if (!jsonData) {
+    const start = rawText.indexOf('{"cow"');
+    const end = rawText.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      try { jsonData = JSON.parse(rawText.slice(start, end + 1)); } catch(e) {}
+    }
+  }
+  if (!jsonData) {
+    const start = rawText.indexOf('{');
+    const end = rawText.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      try { jsonData = JSON.parse(rawText.slice(start, end + 1)); } catch(e) {}
+    }
+  }
+  if (!jsonData) {
+    document.getElementById('resultsContent').innerHTML =
+      `<div class="error-box">Could not parse results. Please try again.</div>`;
+    return;
+  }
+  renderWithData(jsonData);
+}
 
+function renderWithData(jsonData) {
   let html = '';
+  const bulls = jsonData.bulls || [];
+  const eligible = bulls.filter(b => b.parentageResult === 'PASS');
 
-  if (jsonData) {
-    // Recommendation
-    if (jsonData.recommendation) {
-      const rec = jsonData.recommendation;
+  // ── SECTION 1: Expected Calf $C per eligible bull ──
+  if (eligible.length > 0) {
+    eligible.forEach(bull => {
+      const mid = bull.expectedMidpointC;
+      const cls = mid >= 470 ? 'dc-great' : mid >= 450 ? 'dc-good' : 'dc-ok';
+      const flags = bull.flags || [];
       html += `
-        <div class="recommendation-box">
-          <div class="rec-label">Recommended Mating</div>
-          <div class="rec-value">${rec.bullName || 'No eligible bulls found'}</div>
-          ${rec.expectedCalfC ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);margin-top:4px;">${rec.expectedCalfC}</div>` : ''}
-          <div class="rec-reason">${rec.summary || ''}</div>
-          ${rec.footStructureNote ? `<div class="foot-note">🦶 ${rec.footStructureNote}</div>` : ''}
+        <div class="recommendation-box" style="margin-bottom:16px;">
+          <div class="rec-label">Expected Calf $C — ${bull.name}</div>
+          <div class="expected-dc ${cls}" style="font-size:36px;font-weight:700;font-family:'Playfair Display',serif;">~$${mid || '—'}</div>
+          ${flags.length > 0
+            ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;">${flags.map(f => `<div class="flag-item">${f}</div>`).join('')}</div>`
+            : `<div style="margin-top:8px;font-size:12px;color:var(--green);font-family:'IBM Plex Mono',monospace;">✓ No concerns flagged</div>`}
         </div>`;
-    }
-
-    // Parentage badges
-    if (jsonData.bulls?.length) {
-      html += `<div class="section-label">Parentage Compatibility</div>`;
-      html += `<div class="parentage-grid">`;
-      jsonData.bulls.forEach(bull => {
-        const pass = bull.parentageResult === 'PASS';
-        html += `
-          <div class="parentage-badge ${pass ? 'pass' : 'fail'}">
-            <div class="badge-name">${bull.name || 'Unknown'}</div>
-            <div class="badge-status">${pass ? '✓ Compatible' : '✗ Disqualified'}</div>
-            <div class="badge-reason">${bull.parentageReason || ''}</div>
-          </div>`;
-      });
-      html += `</div>`;
-
-      // Expected $C midpoints
-      const eligible = jsonData.bulls.filter(b => b.parentageResult === 'PASS');
-      if (eligible.length) {
-        html += `<div class="midpoint-row">`;
-        eligible.forEach(b => {
-          const mid = b.expectedMidpointC;
-          const cls = mid >= 460 ? 'dc-great' : mid >= 435 ? 'dc-good' : 'dc-ok';
-          html += `
-            <div class="midpoint-card">
-              <div class="midpoint-label">Expected $C Midpoint</div>
-              <div class="expected-dc ${cls}">$${mid || '—'}</div>
-              <div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-top:2px;">${b.name}</div>
-            </div>`;
-        });
-        html += `</div>`;
-      }
-
-      // EPD Table
-      if (outputMode !== 'analysis') {
-        const traitGroups = [
-          { group: 'Carcass & $Values', items: [
-            { key: '$C', label: '$C', pctKey: '$C_pct' },
-            { key: 'Marb', label: 'Marb', pctKey: 'Marb_pct' },
-            { key: 'CW', label: 'CW', pctKey: 'CW_pct' },
-            { key: 'RE', label: 'RE', pctKey: 'RE_pct' },
-          ]},
-          { group: 'Growth', items: [
-            { key: 'WW', label: 'WW', pctKey: 'WW_pct' },
-            { key: 'YW', label: 'YW', pctKey: 'YW_pct' },
-            { key: 'BW', label: 'BW', pctKey: 'BW_pct' },
-          ]},
-          { group: 'Structure & Management', items: [
-            { key: 'Claw_pct', label: 'Claw %', pctKey: null },
-            { key: 'Angle_pct', label: 'Angle %', pctKey: null },
-            { key: 'Doc_pct', label: 'Doc %', pctKey: null },
-            { key: 'HS_pct', label: 'HS %', pctKey: null },
-          ]},
-        ];
-
-        html += `<div class="section-label" style="margin-top:8px;">EPD Comparison</div>`;
-        html += `<table class="comparison-table"><thead><tr>
-          <th>Trait</th><th>COW</th>
-          ${jsonData.bulls.map(b => `
-            <th class="bull-col">
-              ${b.name?.split(' ').slice(-2).join(' ') || 'Bull'}<br>
-              <span style="font-size:9px;font-weight:400;color:${b.parentageResult==='PASS'?'var(--green)':'var(--red)'}">
-                ${b.parentageResult==='PASS'?'✓ eligible':'✗ disq'}
-              </span>
-            </th>`).join('')}
-        </tr></thead><tbody>`;
-
-        traitGroups.forEach(g => {
-          html += `<tr><td colspan="${2 + jsonData.bulls.length}" class="trait-group">${g.group}</td></tr>`;
-          g.items.forEach(trait => {
-            html += `<tr><td class="trait-name">${trait.label}</td>`;
-
-            // Cow
-            const cowE = jsonData.cow?.epds || {};
-            const cv = cowE[trait.key];
-            const cp = trait.pctKey ? cowE[trait.pctKey] : (trait.key.endsWith('_pct') ? cv : null);
-            html += `<td class="epd-cell">
-              <div class="epd-value">${cv !== undefined && cv !== null ? cv : '—'}</div>
-              ${cp != null ? `<div class="epd-pct ${pctClass(cp)}">${cp}%</div>` : ''}
-            </td>`;
-
-            // Bulls
-            jsonData.bulls.forEach(bull => {
-              const disq = bull.parentageResult !== 'PASS';
-              const be = bull.epds || {};
-              const bv = be[trait.key];
-              const bp = trait.pctKey ? be[trait.pctKey] : (trait.key.endsWith('_pct') ? bv : null);
-              html += `<td class="epd-cell${disq ? ' disqualified-col' : ''}">
-                <div class="epd-value">${bv !== undefined && bv !== null ? bv : '—'}</div>
-                ${bp != null && !disq ? `<div class="epd-pct ${pctClass(bp)}">${bp}%</div>` : ''}
-              </td>`;
-            });
-            html += `</tr>`;
-          });
-        });
-
-        html += `</tbody></table>`;
-      }
-    }
+    });
+  } else {
+    html += `
+      <div class="recommendation-box" style="background:var(--red-bg);border-color:var(--red);">
+        <div class="rec-label" style="color:var(--red);">No Eligible Bulls</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px;">All candidate bulls were disqualified on parentage grounds.</div>
+      </div>`;
   }
 
-  // Written analysis — extract only the Recommendation section
-  if ((outputMode === 'analysis' || outputMode === 'both') && writtenAnalysis?.trim()) {
-    // Pull out just the ## Recommendation section
-    const recMatch = writtenAnalysis.match(/##\s*Recommendation[\s\S]*/i);
-    const recText = recMatch ? recMatch[0] : writtenAnalysis;
-
+  // ── SECTION 2: Parentage Compatibility ──
+  html += `<div class="section-label" style="margin-top:8px;">Parentage Compatibility</div>`;
+  html += `<div class="parentage-grid">`;
+  bulls.forEach(bull => {
+    const pass = bull.parentageResult === 'PASS';
     html += `
-      <div class="analysis-block">
-        <h3>Recommendation</h3>
-        <div class="analysis-text">${formatAnalysis(recText.replace(/##\s*Recommendation/i, '').trim())}</div>
+      <div class="parentage-badge ${pass ? 'pass' : 'fail'}">
+        <div class="badge-name">${bull.name || 'Unknown'}</div>
+        <div class="badge-status" style="font-size:15px;margin:4px 0;">${pass ? '✅ Pass' : '❌ Disqualified'}</div>
+        ${!pass && bull.parentageReason ? `<div class="badge-reason">${bull.parentageReason}</div>` : ''}
       </div>`;
+  });
+  html += `</div>`;
+
+  // ── SECTION 3: Expected Calf EPD Table ──
+  if (eligible.length > 0) {
+    const traitGroups = [
+      { group: '$Values & Carcass', items: [
+        { key: '$C', label: '$C', pctKey: '$C_pct' },
+        { key: 'Marb', label: 'Marb', pctKey: 'Marb_pct' },
+        { key: 'CW', label: 'CW', pctKey: 'CW_pct' },
+        { key: 'RE', label: 'RE', pctKey: 'RE_pct' },
+      ]},
+      { group: 'Growth', items: [
+        { key: 'WW', label: 'WW', pctKey: 'WW_pct' },
+        { key: 'YW', label: 'YW', pctKey: 'YW_pct' },
+        { key: 'BW', label: 'BW', pctKey: 'BW_pct' },
+        { key: 'CED', label: 'CED', pctKey: 'CED_pct' },
+      ]},
+      { group: 'Structure & Management', items: [
+        { key: 'Claw_pct', label: 'Claw %', pctKey: null },
+        { key: 'Angle_pct', label: 'Angle %', pctKey: null },
+        { key: 'Doc_pct', label: 'Doc %', pctKey: null },
+        { key: 'HS_pct', label: 'HS %', pctKey: null },
+        { key: 'Milk', label: 'Milk', pctKey: 'Milk_pct' },
+      ]},
+    ];
+
+    const showCalfCol = eligible.length === 1;
+    const colCount = 2 + eligible.length + (showCalfCol ? 1 : 0);
+
+    html += `<div class="section-label" style="margin-top:8px;">Expected Calf EPDs</div>`;
+    html += `<table class="comparison-table"><thead><tr>
+      <th>Trait</th>
+      <th>Cow</th>
+      ${eligible.map(b => `<th class="bull-col">${b.name?.split(' ').slice(-2).join(' ') || 'Bull'}</th>`).join('')}
+      ${showCalfCol ? `<th class="bull-col" style="color:var(--gold);">Expected Calf</th>` : ''}
+    </tr></thead><tbody>`;
+
+    traitGroups.forEach(g => {
+      html += `<tr><td colspan="${colCount}" class="trait-group">${g.group}</td></tr>`;
+      g.items.forEach(trait => {
+        html += `<tr><td class="trait-name">${trait.label}</td>`;
+
+        const cowE = jsonData.cow?.epds || {};
+        const cv = cowE[trait.key];
+        const cp = trait.pctKey ? cowE[trait.pctKey] : (trait.key.endsWith('_pct') ? cv : null);
+        html += `<td class="epd-cell">
+          <div class="epd-value">${cv !== undefined && cv !== null ? cv : '—'}</div>
+          ${cp != null ? `<div class="epd-pct ${pctClass(cp)}">${cp}%</div>` : ''}
+        </td>`;
+
+        eligible.forEach(bull => {
+          const be = bull.epds || {};
+          const bv = be[trait.key];
+          const bp = trait.pctKey ? be[trait.pctKey] : (trait.key.endsWith('_pct') ? bv : null);
+          html += `<td class="epd-cell">
+            <div class="epd-value">${bv !== undefined && bv !== null ? bv : '—'}</div>
+            ${bp != null ? `<div class="epd-pct ${pctClass(bp)}">${bp}%</div>` : ''}
+          </td>`;
+
+          if (showCalfCol) {
+            const cavg = cv != null && bv != null ? Math.round(((Number(cv) + Number(bv)) / 2) * 100) / 100 : null;
+            const capct = cp != null && bp != null ? Math.round((cp + bp) / 2) : null;
+            const flagged = capct != null && capct >= 90;
+            html += `<td class="epd-cell" style="${flagged ? 'background:rgba(255,180,0,0.08);' : ''}">
+              <div class="epd-value" style="${flagged ? 'color:#9a6e28;font-weight:600;' : ''}">${cavg !== null ? cavg : '—'}</div>
+              ${capct != null ? `<div class="epd-pct ${pctClass(capct)}">${capct}%${flagged ? ' ⚠️' : ''}</div>` : ''}
+            </td>`;
+          }
+        });
+        html += `</tr>`;
+      });
+    });
+    html += `</tbody></table>`;
   }
 
   document.getElementById('resultsContent').innerHTML =
