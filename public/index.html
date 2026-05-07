@@ -306,9 +306,9 @@
   }
 
   /* ── EPD TABLE ── */
-  .comparison-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+  .comparison-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 24px; font-size: 13px; }
 
-  .comparison-table thead tr { background: var(--header); position: sticky; top: 0; z-index: 10; }
+  .comparison-table thead tr { background: var(--header); position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgb(0 0 0 / 0.2); }
 
   .comparison-table th {
     font-family: 'IBM Plex Mono', monospace;
@@ -321,7 +321,7 @@
   }
 
   .comparison-table th.bull-col { color: var(--accent2); text-align: center; }
-  .comparison-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .comparison-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); border-right: none; vertical-align: middle; }
   .comparison-table tr:last-child td { border-bottom: none; }
   .comparison-table tr:nth-child(even) td { background: #F8F9F7; }
   .comparison-table tr:hover td { background: rgb(224 122 95 / 0.05); }
@@ -1010,7 +1010,7 @@ function renderWithData(jsonData) {
       <th>Trait</th>
       <th class="bull-col" style="word-break:break-word;max-width:120px;">${jsonData.cow?.name || 'Cow'}</th>
       ${eligible.map(b => `<th class="bull-col">${b.name || 'Bull'}</th>`).join('')}
-      ${showCalfCol ? `<th class="bull-col" style="color:var(--gold);">Expected Calf</th>` : ''}
+      ${showCalfCol ? `<th class="bull-col" style="color:var(--accent2);">Expected Calf</th>` : ''}
     </tr></thead><tbody>`;
 
     traitGroups.forEach(g => {
