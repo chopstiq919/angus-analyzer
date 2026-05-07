@@ -688,7 +688,7 @@ function toggleValue(key, el) {
 function setCow() {
   const val = document.getElementById('cowInput').value.trim();
   if (!val) return;
-  cowData = { input: val, notes: document.getElementById('cowNotes').value.trim() };
+  cowData = { input: val, notes: '' };
   document.getElementById('sectionBulls').style.display = 'block';
   document.getElementById('step1').className = 'step done';
   document.getElementById('step2').className = 'step active';
@@ -715,16 +715,7 @@ function renderBullList() {
 function handleBullEnter(event, index) {
   if (event.key !== 'Enter') return;
   event.preventDefault();
-  const nextBull = bulls[index + 1];
-  if (nextBull) {
-    // Focus next bull input
-    const nextInput = document.getElementById(`bull-input-${nextBull.id}`);
-    if (nextInput) nextInput.focus();
-  } else {
-    // Last bull — show config and scroll to it
-    checkShowConfig();
-    scrollTo('sectionConfig');
-  }
+  runAnalysis();
 }
 
 function addBull() {
@@ -742,15 +733,6 @@ function removeBull(id) {
 function updateBull(id, val) {
   const b = bulls.find(b => b.id === id);
   if (b) b.value = val;
-}
-
-function checkShowConfig() {
-  if (bulls.filter(b => b.value.trim()).length >= 1) {
-    document.getElementById('sectionConfig').style.display = 'block';
-    document.getElementById('step2').className = 'step done';
-    document.getElementById('step3').className = 'step active';
-    renderValueGrid();
-  }
 }
 
 // ── STEP 3 ──
@@ -1071,6 +1053,14 @@ function renderWithData(jsonData) {
 
   document.getElementById('resultsContent').innerHTML =
     html || `<div class="error-box">No results to display. Please try again.</div>`;
+
+  // Save to session so back button doesn't lose results
+  try {
+    sessionStorage.setItem('lastResult', JSON.stringify({
+      jsonData,
+      cowLabel: jsonData.cow?.name || cowData?.input || ''
+    }));
+  } catch(e) {}
 }
 
 // ── HELPERS ──
@@ -1108,12 +1098,13 @@ function scrollTo(id) {
 }
 
 function resetAll() {
+  try { sessionStorage.removeItem('lastResult'); } catch(e) {}
   cowData = null;
   bulls = [{ id: 1, value: '' }, { id: 2, value: '' }];
   bullIdCounter = 3;
   selectedValues = new Set(['$C']);
 
-  ['cowInput','cowNotes'].forEach(id => document.getElementById(id).value = '');
+  ['cowInput'].forEach(id => document.getElementById(id).value = '');
   ['sectionBulls','resultsSection'].forEach(id =>
     document.getElementById(id).style.display = 'none');
 
@@ -1124,6 +1115,22 @@ function resetAll() {
 
 // ── INIT ──
 renderBullList();
+
+// Restore last result if user hit back button
+try {
+  const saved = sessionStorage.getItem('lastResult');
+  if (saved) {
+    const { jsonData, cowLabel } = JSON.parse(saved);
+    if (jsonData) {
+      document.getElementById('resultsSection').style.display = 'block';
+      document.getElementById('resultsCowLabel').textContent = cowLabel || '';
+      renderWithData(jsonData);
+      document.getElementById('step1').className = 'step done';
+      document.getElementById('step2').className = 'step done';
+      document.getElementById('step3').className = 'step active';
+    }
+  }
+} catch(e) {}
 </script>
 </body>
 </html>
