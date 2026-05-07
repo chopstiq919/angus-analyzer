@@ -308,7 +308,7 @@
   /* ── EPD TABLE ── */
   .comparison-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
 
-  .comparison-table thead tr { background: var(--header); }
+  .comparison-table thead tr { background: var(--header); position: sticky; top: 0; z-index: 10; }
 
   .comparison-table th {
     font-family: 'IBM Plex Mono', monospace;
@@ -616,11 +616,6 @@
         <div style="padding-top:22px;">
           <button class="btn btn-primary" onclick="setCow()">Set Cow →</button>
         </div>
-      </div>
-      <div style="margin-top:14px;">
-        <div class="input-label" style="margin-bottom:6px;">Additional Notes (optional)</div>
-        <textarea id="cowNotes" placeholder="Known strengths, weaknesses, management context, first-calf heifer, etc."></textarea>
-        <div class="helper">Any context about this cow helps calibrate the analysis</div>
       </div>
     </div>
   </div>
@@ -1032,7 +1027,7 @@ function renderWithData(jsonData) {
     html += `<table class="comparison-table"><thead><tr>
       <th>Trait</th>
       <th class="bull-col" style="word-break:break-word;max-width:120px;">${jsonData.cow?.name || 'Cow'}</th>
-      ${eligible.map(b => `<th class="bull-col">${b.name?.split(' ').slice(-2).join(' ') || 'Bull'}</th>`).join('')}
+      ${eligible.map(b => `<th class="bull-col">${b.name || 'Bull'}</th>`).join('')}
       ${showCalfCol ? `<th class="bull-col" style="color:var(--gold);">Expected Calf</th>` : ''}
     </tr></thead><tbody>`;
 
