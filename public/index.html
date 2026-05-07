@@ -8,22 +8,25 @@
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
   :root {
-    --bg: #f5f0e8;
-    --surface: #ffffff;
-    --surface2: #f0ebe0;
-    --border: #d8cdb8;
-    --border2: #c8bda8;
-    --gold: #9a6e28;
-    --gold2: #b8882e;
-    --gold-dim: #b89050;
-    --text: #1e1a14;
-    --text2: #4a3f2e;
-    --text3: #8a7a60;
-    --green: #2a6e3e;
-    --green-bg: #e8f5ee;
-    --red: #8c2e2e;
-    --red-bg: #faeaea;
-    --radius: 6px;
+    --bg: #F8F1E9;
+    --surface: #FFFFFF;
+    --surface2: #F4F7F4;
+    --border: #D4E0D2;
+    --border2: #C8D8C5;
+    --accent: #E07A5F;
+    --accent-hover: #C96A52;
+    --accent2: #F4A261;
+    --text: #1F2C28;
+    --text2: #4A5E57;
+    --text3: #7A9189;
+    --green: #2E8B6D;
+    --green-bg: #EAF6F1;
+    --red: #B85450;
+    --red-bg: #FAEAEA;
+    --header: #1A3C34;
+    --radius: 8px;
+    --shadow: 0 10px 15px -3px rgb(26 60 52 / 0.08);
+    --shadow-sm: 0 2px 6px rgb(26 60 52 / 0.06);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,45 +47,45 @@
     line-height: 1.6;
   }
 
-  body::before {
-    display: none;
-  }
+  body::before { display: none; }
 
+  /* ── HEADER ── */
   .header {
-    border-bottom: 1px solid var(--border);
-    padding: 28px 40px 24px;
+    padding: 24px 40px;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: 20px;
-    background: linear-gradient(180deg, #2a2318 0%, #3d3020 100%);
+    background: var(--header);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
   }
 
   .header-eyebrow {
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
     font-size: 10px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #c9a84c;
+    color: var(--accent2);
     margin-bottom: 2px;
   }
 
   .header-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
+    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    font-size: 26px;
     font-weight: 900;
-    color: #f5ede0;
+    color: #FFFFFF !important;
     letter-spacing: -0.02em;
     line-height: 1;
   }
 
   .header-sub {
     font-size: 12px;
-    color: #8a7860;
+    color: rgba(255,255,255,0.55);
     margin-left: auto;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: 'IBM Plex Mono', 'Courier New', monospace;
     letter-spacing: 0.05em;
   }
 
+  /* ── LAYOUT ── */
   .main {
     max-width: 1100px;
     margin: 0 auto;
@@ -94,29 +97,22 @@
     font-size: 10px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--gold-dim);
+    color: var(--text3);
     margin-bottom: 10px;
   }
 
+  /* ── CARDS ── */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
   }
 
-  .input-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-  }
-
-  .input-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  /* ── INPUTS ── */
+  .input-row { display: flex; gap: 10px; align-items: flex-start; }
+  .input-group { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
   .input-label {
     font-size: 11px;
@@ -135,21 +131,18 @@
     padding: 10px 14px;
     width: 100%;
     outline: none;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
 
   input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
-    border-color: var(--gold-dim);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgb(224 122 95 / 0.12);
   }
 
   input::placeholder, textarea::placeholder { color: var(--text3); }
+  textarea { resize: vertical; min-height: 72px; font-size: 12px; }
 
-  textarea {
-    resize: vertical;
-    min-height: 72px;
-    font-size: 12px;
-  }
-
+  /* ── BUTTONS ── */
   .btn {
     padding: 10px 22px;
     border-radius: var(--radius);
@@ -160,28 +153,30 @@
     letter-spacing: 0.05em;
     transition: all 0.15s;
     white-space: nowrap;
-    font-weight: 500;
+    font-weight: 600;
   }
 
   .btn-primary {
-    background: #f0e6c8;
-    color: #1a1610;
-    border: 1px solid #c9a84c;
+    background: var(--accent);
+    color: #FFFFFF;
+    border: none;
+    box-shadow: 0 2px 8px rgb(224 122 95 / 0.35);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: #fff9ed;
-    border-color: var(--gold2);
+    background: var(--accent-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(201,168,76,0.25);
+    box-shadow: 0 4px 12px rgb(224 122 95 / 0.45);
   }
 
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+
   .btn-primary:disabled {
-    background: var(--surface2);
+    background: var(--border);
     color: var(--text3);
-    border-color: var(--border2);
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
   }
 
   .btn-ghost {
@@ -190,12 +185,12 @@
     border: 1px solid var(--border2);
   }
 
-  .btn-ghost:hover { border-color: var(--gold-dim); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 
   .btn-danger {
     background: transparent;
     color: var(--red);
-    border: 1px solid rgba(140,74,74,0.4);
+    border: 1px solid rgba(184,84,80,0.3);
     padding: 6px 12px;
     font-size: 11px;
   }
@@ -203,6 +198,7 @@
   .btn-danger:hover { background: var(--red-bg); border-color: var(--red); }
   .btn-small { padding: 6px 14px; font-size: 11px; }
 
+  /* ── BULL ENTRIES ── */
   .bull-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
 
   .bull-entry {
@@ -213,13 +209,16 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 10px 14px;
+    transition: border-color 0.15s;
   }
+
+  .bull-entry:focus-within { border-color: var(--accent); }
 
   .bull-number {
     font-family: 'Playfair Display', serif;
     font-size: 20px;
     font-weight: 700;
-    color: var(--gold-dim);
+    color: var(--accent);
     width: 28px;
     flex-shrink: 0;
     text-align: center;
@@ -232,58 +231,15 @@
     border-bottom: 1px solid var(--border2);
     border-radius: 0;
     padding: 4px 0;
+    box-shadow: none;
   }
 
-  .bull-entry input:focus { border-bottom-color: var(--gold-dim); }
-
-  .mode-toggle { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
-
-  .mode-btn {
-    padding: 7px 16px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border2);
-    background: transparent;
-    color: var(--text2);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 0.05em;
+  .bull-entry input:focus {
+    border-bottom-color: var(--accent);
+    box-shadow: none;
   }
 
-  .mode-btn:hover { color: var(--text); border-color: var(--gold-dim); }
-  .mode-btn.active { background: var(--gold); color: #0f0e0c; border-color: var(--gold); font-weight: 500; }
-
-  .value-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-
-  .value-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    border-radius: 20px;
-    border: 1px solid var(--border2);
-    background: var(--surface2);
-    cursor: pointer;
-    transition: all 0.15s;
-    user-select: none;
-  }
-
-  .value-chip:hover { border-color: var(--gold-dim); }
-  .value-chip.checked { background: rgba(201,168,76,0.12); border-color: var(--gold); }
-  .value-chip input[type="checkbox"] { display: none; }
-
-  .value-chip-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
-    color: var(--text2);
-    font-weight: 500;
-  }
-
-  .value-chip.checked .value-chip-label { color: var(--gold2); }
-  .value-chip-desc { font-size: 10px; color: var(--text3); }
-  .value-chip.checked .value-chip-desc { color: var(--gold-dim); }
-
+  /* ── RESULTS ── */
   .results-section { margin-top: 32px; }
 
   .results-header {
@@ -292,7 +248,7 @@
     gap: 16px;
     margin-bottom: 20px;
     padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
     flex-wrap: wrap;
   }
 
@@ -300,154 +256,107 @@
     font-family: 'Playfair Display', serif;
     font-size: 20px;
     font-weight: 700;
+    color: var(--text);
   }
 
   .results-cow {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
-    color: var(--gold);
-    background: rgba(201,168,76,0.1);
-    border: 1px solid rgba(201,168,76,0.2);
+    color: var(--header);
+    background: rgba(26,60,52,0.08);
+    border: 1px solid rgba(26,60,52,0.15);
     padding: 4px 10px;
     border-radius: 20px;
   }
 
+  /* ── PARENTAGE BADGES ── */
   .parentage-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
+    gap: 12px;
     margin-bottom: 24px;
   }
 
   .parentage-badge {
     border-radius: var(--radius);
-    padding: 12px 14px;
+    padding: 14px 16px;
     border: 1px solid;
+    box-shadow: var(--shadow-sm);
   }
 
   .parentage-badge.pass { background: var(--green-bg); border-color: var(--green); }
   .parentage-badge.fail { background: var(--red-bg); border-color: var(--red); }
 
-  .badge-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-  .badge-status { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
-  .pass .badge-status { color: #6dbf84; }
-  .fail .badge-status { color: #bf6d6d; }
-  .badge-reason { font-size: 11px; color: var(--text2); line-height: 1.4; }
-
-  .badge-flags { margin-top: 6px; }
+  .badge-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .badge-status { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .pass .badge-status { color: var(--green); }
+  .fail .badge-status { color: var(--red); }
+  .badge-reason { font-size: 11px; color: var(--text2); line-height: 1.5; }
+  .badge-flags { margin-top: 8px; }
 
   .flag-item {
-    font-size: 10px;
-    color: #8a6a20;
-    background: #fdf3dc;
-    border: 1px solid #e8c96a;
-    border-radius: 4px;
-    padding: 3px 7px;
-    margin-top: 4px;
-    line-height: 1.4;
+    font-size: 11px;
+    color: #7A4F1E;
+    background: #FEF3E2;
+    border: 1px solid #F4A261;
+    border-radius: 5px;
+    padding: 5px 9px;
+    margin-top: 5px;
+    line-height: 1.5;
   }
 
+  /* ── EPD TABLE ── */
   .comparison-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 13px; }
+
+  .comparison-table thead tr { background: var(--header); }
 
   .comparison-table th {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--text3);
-    padding: 8px 12px;
+    color: rgba(255,255,255,0.7);
+    padding: 10px 12px;
     text-align: left;
-    border-bottom: 1px solid var(--border);
   }
 
-  .comparison-table th.bull-col { color: var(--gold); text-align: center; }
+  .comparison-table th.bull-col { color: var(--accent2); text-align: center; }
   .comparison-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .comparison-table tr:last-child td { border-bottom: none; }
-  .comparison-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .comparison-table tr:nth-child(even) td { background: #F8F9F7; }
+  .comparison-table tr:hover td { background: rgb(224 122 95 / 0.05); }
 
   .trait-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text2); }
 
   .trait-group {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 10px;
-    color: var(--gold-dim);
+    color: var(--header);
+    font-weight: 600;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    padding: 10px 12px 4px;
-    background: rgba(201,168,76,0.04);
+    padding: 10px 12px 6px;
+    background: rgba(26,60,52,0.05);
+    border-bottom: 1px solid var(--border);
   }
 
   .epd-cell { text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
-  .epd-value { color: var(--text); }
+  .epd-value { color: var(--text); font-weight: 500; }
   .epd-pct { font-size: 10px; }
-  .epd-pct.elite { color: #6dbf84; }
-  .epd-pct.good { color: var(--gold); }
-  .epd-pct.poor { color: #bf6d6d; }
+  .epd-pct.elite { color: var(--green); font-weight: 600; }
+  .epd-pct.good { color: #2E7D5E; }
+  .epd-pct.poor { color: var(--red); font-weight: 600; }
   .epd-pct.avg { color: var(--text3); }
-
   .disqualified-col { opacity: 0.25; }
 
-  .analysis-block {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px 28px;
-    margin-bottom: 16px;
-  }
-
-  .analysis-block h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .analysis-text { color: var(--text2); font-size: 14px; line-height: 1.8; }
-
-  .analysis-h2 {
-    font-family: 'Playfair Display', serif;
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--text);
-    margin: 20px 0 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .analysis-h3 {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    margin: 14px 0 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .analysis-bullet {
-    padding: 3px 0 3px 18px;
-    position: relative;
-    color: var(--text2);
-    font-size: 13px;
-  }
-
-  .analysis-bullet::before {
-    content: '—';
-    position: absolute;
-    left: 0;
-    color: var(--gold-dim);
-  }
-
-  .analysis-p { margin-top: 10px; color: var(--text2); font-size: 14px; line-height: 1.8; }
-
+  /* ── RECOMMENDATION BOX ── */
   .recommendation-box {
-    background: linear-gradient(135deg, #fdf8ee 0%, #f8f2e4 100%);
-    border: 1px solid #d4b870;
+    background: linear-gradient(135deg, #FFF8F5 0%, #FFF2EC 100%);
+    border: 1px solid rgba(224,122,95,0.3);
     border-radius: var(--radius);
     padding: 20px 24px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
   }
 
   .rec-label {
@@ -455,25 +364,20 @@
     font-size: 10px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--gold-dim);
+    color: var(--text3);
     margin-bottom: 6px;
   }
 
-  .rec-value { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--gold); }
+  .rec-value { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--accent); }
   .rec-reason { font-size: 13px; color: var(--text2); margin-top: 8px; line-height: 1.6; }
 
-  .foot-note {
-    background: rgba(201,168,76,0.05);
-    border-left: 2px solid var(--gold-dim);
-    padding: 10px 14px;
-    font-size: 12px;
-    color: var(--text2);
-    border-radius: 0 var(--radius) var(--radius) 0;
-    margin-top: 10px;
-    font-family: 'IBM Plex Mono', monospace;
-    line-height: 1.6;
-  }
+  /* ── $C VALUE COLORS ── */
+  .expected-dc { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; }
+  .dc-great { color: var(--green); }
+  .dc-good { color: var(--accent); }
+  .dc-ok { color: var(--text2); }
 
+  /* ── LOADING ── */
   .loading-state {
     display: flex;
     flex-direction: column;
@@ -484,10 +388,10 @@
   }
 
   .loading-spinner {
-    width: 36px;
-    height: 36px;
-    border: 2px solid var(--border2);
-    border-top-color: var(--gold);
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
@@ -504,51 +408,23 @@
     line-height: 1.6;
   }
 
-  .streaming-block {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px 24px;
-    margin-top: 16px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
-    color: var(--text2);
-    line-height: 1.8;
-    white-space: pre-wrap;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .streaming-cursor {
-    display: inline-block;
-    width: 2px;
-    height: 14px;
-    background: var(--gold);
-    margin-left: 2px;
-    animation: blink 0.8s step-end infinite;
-    vertical-align: text-bottom;
-  }
-
-  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
-
+  /* ── ERROR ── */
   .error-box {
     background: var(--red-bg);
     border: 1px solid var(--red);
     border-radius: var(--radius);
     padding: 14px 18px;
     font-size: 13px;
-    color: #bf6d6d;
+    color: var(--red);
     margin-top: 16px;
   }
 
-  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
-  .helper { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; margin-top: 5px; }
-
+  /* ── STEPS ── */
   .step-indicator {
     display: flex;
     gap: 8px;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
     flex-wrap: wrap;
   }
 
@@ -559,37 +435,48 @@
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
     color: var(--text3);
+    transition: color 0.2s;
   }
 
-  .step.active { color: var(--gold); }
+  .step.active { color: var(--accent); }
   .step.done { color: var(--green); }
 
   .step-num {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    border: 1px solid currentColor;
+    border: 2px solid currentColor;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 10px;
+    font-weight: 700;
     flex-shrink: 0;
+    transition: all 0.2s;
   }
 
-  .step-sep { flex: 1; height: 1px; background: var(--border); max-width: 40px; }
+  .step.active .step-num { background: var(--accent); border-color: var(--accent); color: white; }
+  .step.done .step-num { background: var(--green); border-color: var(--green); color: white; }
+  .step-sep { flex: 1; height: 2px; background: var(--border); max-width: 40px; border-radius: 1px; }
 
-  .cow-info-display {
-    background: rgba(201,168,76,0.05);
-    border: 1px solid rgba(201,168,76,0.15);
+  /* ── MISC ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .helper { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; margin-top: 5px; }
+
+  .streaming-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 12px 16px;
-    margin-bottom: 16px;
+    padding: 16px 20px;
+    margin-top: 16px;
     font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
     color: var(--text2);
+    line-height: 1.8;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
   }
-
-  .cow-info-display strong { color: var(--gold); display: block; font-size: 13px; margin-bottom: 2px; }
 
   .midpoint-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
 
@@ -597,9 +484,10 @@
     flex: 1;
     min-width: 150px;
     background: var(--surface2);
-    border: 1px solid var(--border2);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
   }
 
   .midpoint-label {
@@ -611,25 +499,83 @@
     margin-bottom: 4px;
   }
 
-  .expected-dc { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; }
-  .dc-great { color: #6dbf84; }
-  .dc-good { color: var(--gold2); }
-  .dc-ok { color: var(--text2); }
+  .analysis-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .analysis-block h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .analysis-text { color: var(--text2); font-size: 14px; line-height: 1.8; }
+
+  .cow-info-display {
+    background: rgba(26,60,52,0.04);
+    border: 1px solid rgba(26,60,52,0.12);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .cow-info-display strong { color: var(--header); display: block; font-size: 13px; margin-bottom: 2px; }
 
   .context-note {
     background: var(--surface2);
-    border-left: 2px solid var(--gold-dim);
+    border-left: 3px solid var(--accent);
     padding: 10px 14px;
     font-size: 11px;
-    color: var(--text3);
+    color: var(--text2);
     border-radius: 0 var(--radius) var(--radius) 0;
     margin-top: 12px;
     font-family: 'IBM Plex Mono', monospace;
     line-height: 1.6;
   }
 
+  .value-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+  .value-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .value-chip:hover { border-color: var(--accent); }
+  .value-chip.checked { background: rgb(224 122 95 / 0.10); border-color: var(--accent); }
+
+  .value-chip-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  .value-chip.checked .value-chip-label { color: var(--accent); }
+  .value-chip-desc { font-size: 10px; color: var(--text3); }
+  .value-chip.checked .value-chip-desc { color: var(--accent-hover); }
+
   @media (max-width: 640px) {
-    .header { padding: 20px; }
+    .header { padding: 16px 20px; }
     .header-sub { display: none; }
     .main { padding: 20px; }
   }
@@ -653,9 +599,7 @@
     <div class="step-sep"></div>
     <div class="step" id="step2"><div class="step-num">2</div><span>Add Bulls</span></div>
     <div class="step-sep"></div>
-    <div class="step" id="step3"><div class="step-num">3</div><span>Configure</span></div>
-    <div class="step-sep"></div>
-    <div class="step" id="step4"><div class="step-num">4</div><span>Analyze</span></div>
+    <div class="step" id="step3"><div class="step-num">3</div><span>Analyze</span></div>
   </div>
 
   <!-- STEP 1: COW -->
@@ -664,7 +608,7 @@
     <div class="card">
       <div class="input-row">
         <div class="input-group">
-          <div class="input-label">Cow Name or Registration Number</div>
+          <div class="input-label">Cow Registration Number</div>
           <input type="text" id="cowInput" placeholder="e.g. 21193816"
             onkeydown="if(event.key==='Enter'){event.preventDefault();setCow();}" />
           <div class="helper">AAA registration number — found on the animal's papers or angus.org</div>
@@ -683,29 +627,12 @@
 
   <!-- STEP 2: BULLS -->
   <div id="sectionBulls" style="display:none; margin-top:24px;">
-    <div id="cowDisplay"></div>
-    <div class="section-label">Step 2 — Candidate Bulls (up to 6)</div>
+    <div class="section-label">Step 2 — Candidate Bulls (up to 3)</div>
     <div class="card">
       <div class="bull-list" id="bullList"></div>
-      <button class="btn btn-ghost btn-small" onclick="addBull()">+ Add Another Bull</button>
-    </div>
-  </div>
-
-  <!-- STEP 3: CONFIG -->
-  <div id="sectionConfig" style="display:none; margin-top:24px;">
-    <div class="section-label">Step 3 — Analysis Preferences</div>
-    <div class="card">
-
-      <div class="input-label" style="margin-bottom:4px;">$Value Priorities</div>
-      <div class="helper" style="margin-bottom:10px;">Select the indexes most important to your program — these will be weighted most heavily in the recommendation</div>
-      <div class="value-grid" id="valueGrid"></div>
-
-      <div class="context-note">
-        Foot structure (Claw &amp; Angle) is automatically assessed relative to this cow's specific scores — no separate setting needed. If the cow has compromised feet, the analysis flags compounding risk with a poor-footed bull and weighs it against the $C gain.
-      </div>
-
-      <div style="margin-top:20px;">
-        <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()">Run Analysis →</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-small" onclick="addBull()">+ Add Another Bull</button>
+        <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()" style="margin-left:auto;">Run Analysis →</button>
       </div>
     </div>
   </div>
@@ -763,18 +690,10 @@ function toggleValue(key, el) {
   }
 }
 
-// ── STEP 1 ──
 function setCow() {
   const val = document.getElementById('cowInput').value.trim();
   if (!val) return;
   cowData = { input: val, notes: document.getElementById('cowNotes').value.trim() };
-
-  document.getElementById('cowDisplay').innerHTML = `
-    <div class="cow-info-display">
-      <strong>${val}</strong>
-      ${cowData.notes ? `<span>${cowData.notes}</span>` : ''}
-    </div>`;
-
   document.getElementById('sectionBulls').style.display = 'block';
   document.getElementById('step1').className = 'step done';
   document.getElementById('step2').className = 'step active';
@@ -792,7 +711,6 @@ function renderBullList() {
         placeholder="AAA registration number"
         value="${b.value}"
         oninput="updateBull(${b.id}, this.value)"
-        onblur="checkShowConfig()"
         onkeydown="handleBullEnter(event, ${i})"
       />
       ${bulls.length > 1 ? `<button class="btn btn-danger" onclick="removeBull(${b.id})">✕</button>` : ''}
@@ -815,7 +733,7 @@ function handleBullEnter(event, index) {
 }
 
 function addBull() {
-  if (bulls.length >= 6) return;
+  if (bulls.length >= 3) return;
   bulls.push({ id: bullIdCounter++, value: '' });
   renderBullList();
 }
@@ -852,8 +770,8 @@ async function runAnalysis() {
   const filledBulls = bulls.filter(b => b.value.trim());
   if (!cowData || filledBulls.length === 0) return;
 
-  document.getElementById('step3').className = 'step done';
-  document.getElementById('step4').className = 'step active';
+  document.getElementById('step2').className = 'step done';
+  document.getElementById('step3').className = 'step active';
   document.getElementById('analyzeBtn').disabled = true;
 
   document.getElementById('resultsSection').style.display = 'block';
@@ -987,19 +905,51 @@ function renderWithData(jsonData) {
   const bulls = jsonData.bulls || [];
   const eligible = bulls.filter(b => b.parentageResult === 'PASS');
 
-  // ── SECTION 1: Expected Calf $C per eligible bull ──
+  // ── SECTION 1: Expected Calf $Values per eligible bull ──
   if (eligible.length > 0) {
     eligible.forEach(bull => {
       const mid = bull.expectedMidpointC;
       const cls = mid >= 470 ? 'dc-great' : mid >= 450 ? 'dc-good' : 'dc-ok';
       const flags = bull.flags || [];
+      const cowE = jsonData.cow?.epds || {};
+      const be = bull.epds || {};
+
+      // Build selected $Value midpoints
+      const valueKeys = ['$C','$B','$W','$M','$F','$G'];
+      const selectedArr = Array.from(selectedValues);
+      const valueRows = selectedArr
+        .filter(v => valueKeys.includes(v))
+        .map(v => {
+          const cowVal = cowE[v];
+          const bullVal = be[v];
+          const cowPct = cowE[`${v.slice(1)}_pct`] || cowE[`${v}_pct`];
+          const bullPct = be[`${v.slice(1)}_pct`] || be[`${v}_pct`];
+          // Map $C->C_pct, $B->B_pct etc
+          const cpKey = v === '$C' ? '$C_pct' : v === '$B' ? '$B_pct' : v === '$W' ? '$W_pct' : v === '$M' ? '$M_pct' : v === '$F' ? '$F_pct' : '$G_pct';
+          const cp = cowE[cpKey];
+          const bp = be[cpKey];
+          if (cowVal == null || bullVal == null) return null;
+          const midVal = Math.round(((Number(cowVal) + Number(bullVal)) / 2) * 10) / 10;
+          const midPct = cp != null && bp != null ? Math.round((cp + bp) / 2) : null;
+          const isPrimary = v === '$C';
+          return { v, midVal, midPct, isPrimary };
+        })
+        .filter(Boolean);
+
       html += `
         <div class="recommendation-box" style="margin-bottom:16px;">
-          <div class="rec-label">Expected Calf $C — ${bull.name}</div>
-          <div class="expected-dc ${cls}" style="font-size:36px;font-weight:700;font-family:'Playfair Display',serif;">~$${mid || '—'}</div>
+          <div class="rec-label">Expected Calf Values — ${bull.name}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:${flags.length ? '12px' : '0'};">
+            ${valueRows.map(r => `
+              <div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold-dim);letter-spacing:0.1em;margin-bottom:2px;">${r.v}</div>
+                <div class="expected-dc ${r.isPrimary ? cls : 'dc-ok'}" style="font-size:${r.isPrimary ? '36px' : '22px'};font-weight:700;font-family:'Playfair Display',serif;">~$${r.midVal}</div>
+                ${r.midPct != null ? `<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);">${r.midPct}th percentile</div>` : ''}
+              </div>`).join('')}
+          </div>
           ${flags.length > 0
-            ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;">${flags.map(f => `<div class="flag-item">${f}</div>`).join('')}</div>`
-            : `<div style="margin-top:8px;font-size:12px;color:var(--green);font-family:'IBM Plex Mono',monospace;">✓ No concerns flagged</div>`}
+            ? `<div style="display:flex;flex-direction:column;gap:6px;">${flags.map(f => `<div class="flag-item">${f}</div>`).join('')}</div>`
+            : `<div style="font-size:12px;color:var(--green);font-family:'IBM Plex Mono',monospace;">✓ No concerns flagged</div>`}
         </div>`;
     });
   } else {
@@ -1027,34 +977,61 @@ function renderWithData(jsonData) {
   // ── SECTION 3: Expected Calf EPD Table ──
   if (eligible.length > 0) {
     const traitGroups = [
-      { group: '$Values & Carcass', items: [
+      { group: '$Values', items: [
         { key: '$C', label: '$C', pctKey: '$C_pct' },
-        { key: 'Marb', label: 'Marb', pctKey: 'Marb_pct' },
-        { key: 'CW', label: 'CW', pctKey: 'CW_pct' },
-        { key: 'RE', label: 'RE', pctKey: 'RE_pct' },
+        { key: '$B', label: '$B', pctKey: '$B_pct' },
+        { key: '$W', label: '$W', pctKey: '$W_pct' },
+        { key: '$M', label: '$M', pctKey: '$M_pct' },
+        { key: '$F', label: '$F', pctKey: '$F_pct' },
+        { key: '$G', label: '$G', pctKey: '$G_pct' },
       ]},
-      { group: 'Growth', items: [
+      { group: 'Production', items: [
+        { key: 'CED', label: 'CED', pctKey: 'CED_pct' },
+        { key: 'BW', label: 'BW', pctKey: 'BW_pct' },
         { key: 'WW', label: 'WW', pctKey: 'WW_pct' },
         { key: 'YW', label: 'YW', pctKey: 'YW_pct' },
-        { key: 'BW', label: 'BW', pctKey: 'BW_pct' },
-        { key: 'CED', label: 'CED', pctKey: 'CED_pct' },
+        { key: 'RADG', label: 'RADG', pctKey: 'RADG_pct' },
+        { key: 'DMI', label: 'DMI', pctKey: 'DMI_pct' },
+        { key: 'YH', label: 'YH', pctKey: 'YH_pct' },
+        { key: 'SC', label: 'SC', pctKey: 'SC_pct' },
       ]},
-      { group: 'Structure & Management', items: [
+      { group: 'Maternal', items: [
+        { key: 'HP', label: 'HP', pctKey: 'HP_pct' },
+        { key: 'CEM', label: 'CEM', pctKey: 'CEM_pct' },
+        { key: 'Milk', label: 'Milk', pctKey: 'Milk_pct' },
+        { key: 'MKH', label: 'MKH', pctKey: 'MKH_pct' },
+        { key: 'Teat', label: 'Teat', pctKey: 'Teat_pct' },
+        { key: 'UDDR', label: 'UDDR', pctKey: 'UDDR_pct' },
+        { key: 'FL', label: 'FL', pctKey: 'FL_pct' },
+        { key: 'MW', label: 'MW', pctKey: 'MW_pct' },
+        { key: 'MH', label: 'MH', pctKey: 'MH_pct' },
+        { key: 'EN', label: '$EN', pctKey: 'EN_pct' },
+      ]},
+      { group: 'Management', items: [
+        { key: 'Doc_pct', label: 'Doc %', pctKey: null },
         { key: 'Claw_pct', label: 'Claw %', pctKey: null },
         { key: 'Angle_pct', label: 'Angle %', pctKey: null },
-        { key: 'Doc_pct', label: 'Doc %', pctKey: null },
+        { key: 'PAP_pct', label: 'PAP %', pctKey: null },
         { key: 'HS_pct', label: 'HS %', pctKey: null },
-        { key: 'Milk', label: 'Milk', pctKey: 'Milk_pct' },
+      ]},
+      { group: 'Carcass', items: [
+        { key: 'CW', label: 'CW', pctKey: 'CW_pct' },
+        { key: 'Marb', label: 'Marb', pctKey: 'Marb_pct' },
+        { key: 'RE', label: 'RE', pctKey: 'RE_pct' },
+        { key: 'Fat', label: 'Fat', pctKey: 'Fat_pct' },
+      ]},
+      { group: 'Angus-on-Dairy', items: [
+        { key: 'AxH', label: '$AxH', pctKey: 'AxH_pct' },
+        { key: 'AxJ', label: '$AxJ', pctKey: 'AxJ_pct' },
       ]},
     ];
-
     const showCalfCol = eligible.length === 1;
     const colCount = 2 + eligible.length + (showCalfCol ? 1 : 0);
 
     html += `<div class="section-label" style="margin-top:8px;">Expected Calf EPDs</div>`;
     html += `<table class="comparison-table"><thead><tr>
       <th>Trait</th>
-      <th class="bull-col">Cow</th>
+      <th class="bull-col" style="word-break:break-word;max-width:120px;">${jsonData.cow?.name || 'Cow'}</th>
       ${eligible.map(b => `<th class="bull-col">${b.name?.split(' ').slice(-2).join(' ') || 'Bull'}</th>`).join('')}
       ${showCalfCol ? `<th class="bull-col" style="color:var(--gold);">Expected Calf</th>` : ''}
     </tr></thead><tbody>`;
@@ -1135,23 +1112,18 @@ function scrollTo(id) {
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── RESET ──
 function resetAll() {
   cowData = null;
   bulls = [{ id: 1, value: '' }, { id: 2, value: '' }];
   bullIdCounter = 3;
-  outputMode = 'both';
   selectedValues = new Set(['$C']);
 
   ['cowInput','cowNotes'].forEach(id => document.getElementById(id).value = '');
-  ['sectionBulls','sectionConfig','resultsSection'].forEach(id =>
+  ['sectionBulls','resultsSection'].forEach(id =>
     document.getElementById(id).style.display = 'none');
 
   document.getElementById('step1').className = 'step active';
-  ['step2','step3','step4'].forEach(id => document.getElementById(id).className = 'step');
-  document.querySelectorAll('.mode-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.mode === 'both'));
-  outputMode = 'both';
+  ['step2','step3'].forEach(id => document.getElementById(id).className = 'step');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

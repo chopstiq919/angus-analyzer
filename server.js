@@ -32,7 +32,7 @@ const anthropic = new Anthropic({
 // ─────────────────────────────────────────────
 // PUPPETEER — fetch EPD data from angus.org
 // ─────────────────────────────────────────────
-async function fetchAnimalData(regNum) {
+async function fetchAnimalData(regNum, attempt = 1) {
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -56,203 +56,269 @@ async function fetchAnimalData(regNum) {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     );
 
-    // Navigate to the search page
-    const searchUrl = `https://www.angus.org/Find-An-Animal`;
-    console.log(`Navigating to search page for ${regNum}...`);
-    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 60000 });
-    await new Promise(r => setTimeout(r, 2000));
+    // Navigate — domcontentloaded is faster than networkidle2
+    await page.goto('https://www.angus.org/Find-An-Animal', {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
 
     // ── Step 1: Dismiss cookie consent if present ──
     try {
-      const acceptBtn = await page.$('button[onclick*="Accept"], button[data-cky-tag="accept-button"], .cky-btn-accept');
-      if (acceptBtn) {
-        await acceptBtn.click();
-        console.log('Clicked cookie accept button');
-        await new Promise(r => setTimeout(r, 1000));
-      } else {
-        // Try finding by text content
-        await page.evaluate(() => {
-          const buttons = [...document.querySelectorAll('button')];
-          const accept = buttons.find(b => b.textContent.trim().includes('Accept All'));
-          if (accept) accept.click();
-        });
-        await new Promise(r => setTimeout(r, 1000));
-        console.log('Dismissed cookie popup via text search');
-      }
-    } catch(e) {
-      console.log('No cookie popup found or could not dismiss:', e.message);
-    }
+      await page.waitForSelector('button, .cky-btn-accept', { timeout: 3000 });
+      await page.evaluate(() => {
+        const buttons = [...document.querySelectorAll('button')];
+        const accept = buttons.find(b =>
+          b.textContent.trim().includes('Accept All') ||
+          b.getAttribute('data-cky-tag') === 'accept-button'
+        );
+        if (accept) accept.click();
+      });
+      await new Promise(r => setTimeout(r, 300));
+    } catch(e) { /* no cookie popup */ }
 
-    // ── Step 2: Fill the registration number field (confirmed field name) ──
+    // ── Step 2: Fill registration number ──
     await page.waitForSelector('#EpdPedSearchRequest_sAnimalRegNum', { timeout: 10000 });
-    await page.click('#EpdPedSearchRequest_sAnimalRegNum');
     await page.type('#EpdPedSearchRequest_sAnimalRegNum', regNum);
-    console.log(`Typed reg number: ${regNum}`);
 
-    // ── Step 3: Submit the form ──
+    // ── Step 3: Submit form ──
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
       page.click('input[type="submit"]')
     ]);
-    console.log('Form submitted, waiting for results...');
-    await new Promise(r => setTimeout(r, 2000));
 
-    // ── Step 4: We're already on the animal's EPD page after form submit ──
-    // When searching by exact reg number, angus.org redirects directly to the detail page
-    // Verify we landed on an EPD detail page
+    // ── Step 4: Verify we're on the EPD detail page ──
     const currentUrl = page.url();
-    console.log(`Current URL after search: ${currentUrl}`);
-
     if (!currentUrl.includes('EpdPedDtl')) {
-      // Not on detail page yet — try clicking the first result link
       const firstLink = await page.$('a[href*="EpdPedDtl"]');
       if (firstLink) {
         const href = await page.evaluate(el => el.href, firstLink);
-        console.log(`Not on detail page, navigating to: ${href}`);
-        await page.goto(href, { waitUntil: 'networkidle2', timeout: 60000 });
-        await new Promise(r => setTimeout(r, 2000));
+        await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 60000 });
       } else {
-        const bodyPreview = await page.evaluate(() => document.body.innerText.slice(0, 300));
-        throw new Error(`Could not reach EPD detail page. Current URL: ${currentUrl}. Body: ${bodyPreview}`);
+        throw new Error(`Could not reach EPD page for ${regNum}`);
       }
     }
-    await new Promise(r => setTimeout(r, 3000));
 
-    // ── Step 5: Wait for EPD data to render ──
+    // ── Step 5: Wait for EPD data (no fixed timeout — proceeds as soon as ready) ──
     await page.waitForFunction(
       () => document.body.innerText.includes('$C') && document.body.innerText.includes('Marb'),
       { timeout: 30000 }
     );
 
-    // ── Step 6: Extract clean structured text ──
+    // ── Step 6: Extract clean text, stripping token-wasting boilerplate ──
     const pageData = await page.evaluate(() => {
       const clone = document.body.cloneNode(true);
 
-      // Remove all noise
+      // Remove noise elements
       clone.querySelectorAll(
         'script, style, nav, header, footer, iframe, ' +
         '[class*="cookie"], [id*="cookie"], [class*="consent"], [id*="consent"], ' +
-        '[class*="cky"], [id*="cky"], iframe, ' +
+        '[class*="cky"], [id*="cky"], ' +
         '[class*="nav"], [class*="menu"], [class*="header"], [class*="footer"], ' +
         '[class*="social"], [class*="share"], [class*="banner"]'
       ).forEach(el => el.remove());
 
-      // Get all text nodes with actual content, skip empty whitespace
       const walker = document.createTreeWalker(
-        clone,
-        NodeFilter.SHOW_TEXT,
-        {
-          acceptNode: (node) => {
-            const text = node.textContent.trim();
-            if (!text || text.length < 2) return NodeFilter.FILTER_REJECT;
-            // Skip pure whitespace or single chars
-            if (/^\s+$/.test(text)) return NodeFilter.FILTER_REJECT;
-            return NodeFilter.FILTER_ACCEPT;
-          }
-        }
+        clone, NodeFilter.SHOW_TEXT,
+        { acceptNode: (node) => {
+          const t = node.textContent.trim();
+          if (!t || t.length < 2 || /^\s+$/.test(t)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }}
       );
 
       const lines = [];
       let node;
       while ((node = walker.nextNode())) {
-        const text = node.textContent.trim();
-        if (text) lines.push(text);
+        const t = node.textContent.trim();
+        if (t) lines.push(t);
       }
 
-      return lines.join('\n');
+      const fullText = lines.join('\n');
+
+      // Strip the genetic condition codes legend — it's ~2000 tokens of boilerplate
+      // Everything after "The American Angus Association currently recognizes" is not needed
+      const cutoff = fullText.indexOf('The American Angus Association currently recognizes');
+      return cutoff > 0 ? fullText.slice(0, cutoff).trim() : fullText;
     });
 
-    // Log a preview to confirm we got the right animal
-    console.log(`Data preview for ${regNum}:\n${pageData.slice(0, 300)}`);
-    console.log(`Total data length: ${pageData.length}`);
-
+    console.log(`Fetched ${regNum}: ${pageData.length} chars`);
     return { success: true, regNum, data: pageData };
 
   } catch (err) {
-    console.error(`Puppeteer error for ${regNum}:`, err.message);
+    console.error(`Puppeteer error for ${regNum} (attempt ${attempt}):`, err.message);
+    // Retry once on timeout
+    if (attempt < 2 && err.message.includes('timeout')) {
+      console.log(`Retrying ${regNum}...`);
+      if (browser) await browser.close().catch(() => {});
+      return fetchAnimalData(regNum, 2);
+    }
     return { success: false, regNum, error: err.message };
   } finally {
-    if (browser) {
-      await browser.close().catch(e => console.error('Browser close error:', e));
-    }
+    if (browser) await browser.close().catch(() => {});
   }
 }
 
 // ─────────────────────────────────────────────
 // SYSTEM PROMPT
 // ─────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are an expert Black Angus seedstock breeding advisor. Analyze mating decisions using the EPD and pedigree data provided.
+const SYSTEM_PROMPT = `You are an expert Black Angus seedstock breeding advisor.
 
-PARENTAGE RULES (apply in order):
+PARENTAGE RULES:
 1. DISQUALIFIER: Bull and cow share the same sire or dam.
-2. DISQUALIFIER: Bull's direct parent appears as a grandparent of the cow, or vice versa — same ancestor at two generational levels in the calf's pedigree.
+2. DISQUALIFIER: Bull's direct parent appears as a grandparent of the cow, or vice versa.
 3. ALLOWABLE: One shared grandparent maximum, appearing only as a great-grandparent on both sides of the calf.
 4. DISQUALIFIER: Two or more separately-shared ancestors.
 
-EPD PERCENTILES: Lower = better. 1% = top of breed. Applies to ALL traits including Claw, Angle, Doc, HS.
+EPD PERCENTILES: Lower = better. 1% = top of breed.
+$C MARKET: $450+ = premium; $500+ = top dollar.
 
-$C MARKET: $450+ = premium; $500+ = top dollar. Expected calf $C = (cow $C + bull $C) / 2.
-
-OUTPUT FORMAT — Skip all reasoning and explanation. Output ONLY the data block below with no text before or after it. The ===DATA=== and ===END=== markers are required.
+!!! CRITICAL INSTRUCTION !!!
+Do NOT write any reasoning, analysis, pedigree walkthrough, or explanation.
+Output ONLY the ===DATA=== block. Nothing before it. Nothing after it.
+Start your response with ===DATA=== on the very first line.
 
 ===DATA===
 COW_NAME: [name]
 COW_REG: [reg number]
 COW_C: [value]
 COW_C_PCT: [percentile]
-COW_MARB: [value]
-COW_MARB_PCT: [percentile]
-COW_CW: [value]
-COW_CW_PCT: [percentile]
-COW_RE: [value]
-COW_RE_PCT: [percentile]
+COW_B: [value]
+COW_B_PCT: [percentile]
+COW_W: [value]
+COW_W_PCT: [percentile]
+COW_M: [value]
+COW_M_PCT: [percentile]
+COW_F: [value]
+COW_F_PCT: [percentile]
+COW_G: [value]
+COW_G_PCT: [percentile]
+COW_CED: [value]
+COW_CED_PCT: [percentile]
+COW_BW: [value]
+COW_BW_PCT: [percentile]
 COW_WW: [value]
 COW_WW_PCT: [percentile]
 COW_YW: [value]
 COW_YW_PCT: [percentile]
-COW_BW: [value]
-COW_BW_PCT: [percentile]
-COW_CED: [value]
-COW_CED_PCT: [percentile]
-COW_CLAW_PCT: [percentile]
-COW_ANGLE_PCT: [percentile]
-COW_DOC_PCT: [percentile]
-COW_HS_PCT: [percentile]
+COW_RADG: [value]
+COW_RADG_PCT: [percentile]
+COW_DMI: [value]
+COW_DMI_PCT: [percentile]
+COW_YH: [value]
+COW_YH_PCT: [percentile]
+COW_SC: [value]
+COW_SC_PCT: [percentile]
+COW_HP: [value]
+COW_HP_PCT: [percentile]
+COW_CEM: [value]
+COW_CEM_PCT: [percentile]
 COW_MILK: [value]
 COW_MILK_PCT: [percentile]
-COW_SC_PCT: [percentile]
+COW_MKH: [value]
+COW_MKH_PCT: [percentile]
+COW_TEAT: [value]
+COW_TEAT_PCT: [percentile]
+COW_UDDR: [value]
+COW_UDDR_PCT: [percentile]
+COW_FL: [value]
+COW_FL_PCT: [percentile]
+COW_MW: [value]
+COW_MW_PCT: [percentile]
+COW_MH: [value]
+COW_MH_PCT: [percentile]
+COW_EN: [value]
+COW_EN_PCT: [percentile]
+COW_DOC_PCT: [percentile]
+COW_CLAW_PCT: [percentile]
+COW_ANGLE_PCT: [percentile]
+COW_PAP_PCT: [percentile]
+COW_HS_PCT: [percentile]
+COW_CW: [value]
+COW_CW_PCT: [percentile]
+COW_MARB: [value]
+COW_MARB_PCT: [percentile]
+COW_RE: [value]
+COW_RE_PCT: [percentile]
+COW_FAT: [value]
+COW_FAT_PCT: [percentile]
+COW_AXH: [value]
+COW_AXH_PCT: [percentile]
+COW_AXJ: [value]
+COW_AXJ_PCT: [percentile]
 BULL1_NAME: [name]
 BULL1_REG: [reg number]
 BULL1_PARENTAGE: [PASS or FAIL]
-BULL1_PARENTAGE_REASON: [one sentence if FAIL, leave blank if PASS]
+BULL1_PARENTAGE_REASON: [one sentence if FAIL, blank if PASS]
 BULL1_C: [value]
 BULL1_C_PCT: [percentile]
-BULL1_MARB: [value]
-BULL1_MARB_PCT: [percentile]
-BULL1_CW: [value]
-BULL1_CW_PCT: [percentile]
-BULL1_RE: [value]
-BULL1_RE_PCT: [percentile]
+BULL1_B: [value]
+BULL1_B_PCT: [percentile]
+BULL1_W: [value]
+BULL1_W_PCT: [percentile]
+BULL1_M: [value]
+BULL1_M_PCT: [percentile]
+BULL1_F: [value]
+BULL1_F_PCT: [percentile]
+BULL1_G: [value]
+BULL1_G_PCT: [percentile]
+BULL1_CED: [value]
+BULL1_CED_PCT: [percentile]
+BULL1_BW: [value]
+BULL1_BW_PCT: [percentile]
 BULL1_WW: [value]
 BULL1_WW_PCT: [percentile]
 BULL1_YW: [value]
 BULL1_YW_PCT: [percentile]
-BULL1_BW: [value]
-BULL1_BW_PCT: [percentile]
-BULL1_CED: [value]
-BULL1_CED_PCT: [percentile]
-BULL1_CLAW_PCT: [percentile]
-BULL1_ANGLE_PCT: [percentile]
-BULL1_DOC_PCT: [percentile]
-BULL1_HS_PCT: [percentile]
+BULL1_RADG: [value]
+BULL1_RADG_PCT: [percentile]
+BULL1_DMI: [value]
+BULL1_DMI_PCT: [percentile]
+BULL1_YH: [value]
+BULL1_YH_PCT: [percentile]
+BULL1_SC: [value]
+BULL1_SC_PCT: [percentile]
+BULL1_HP: [value]
+BULL1_HP_PCT: [percentile]
+BULL1_CEM: [value]
+BULL1_CEM_PCT: [percentile]
 BULL1_MILK: [value]
 BULL1_MILK_PCT: [percentile]
-BULL1_SC_PCT: [percentile]
-BULL1_MIDPOINT_C: [expected calf $C midpoint number only]
+BULL1_MKH: [value]
+BULL1_MKH_PCT: [percentile]
+BULL1_TEAT: [value]
+BULL1_TEAT_PCT: [percentile]
+BULL1_UDDR: [value]
+BULL1_UDDR_PCT: [percentile]
+BULL1_FL: [value]
+BULL1_FL_PCT: [percentile]
+BULL1_MW: [value]
+BULL1_MW_PCT: [percentile]
+BULL1_MH: [value]
+BULL1_MH_PCT: [percentile]
+BULL1_EN: [value]
+BULL1_EN_PCT: [percentile]
+BULL1_DOC_PCT: [percentile]
+BULL1_CLAW_PCT: [percentile]
+BULL1_ANGLE_PCT: [percentile]
+BULL1_PAP_PCT: [percentile]
+BULL1_HS_PCT: [percentile]
+BULL1_CW: [value]
+BULL1_CW_PCT: [percentile]
+BULL1_MARB: [value]
+BULL1_MARB_PCT: [percentile]
+BULL1_RE: [value]
+BULL1_RE_PCT: [percentile]
+BULL1_FAT: [value]
+BULL1_FAT_PCT: [percentile]
+BULL1_AXH: [value]
+BULL1_AXH_PCT: [percentile]
+BULL1_AXJ: [value]
+BULL1_AXJ_PCT: [percentile]
+BULL1_MIDPOINT_C: [number]
 ===END===
 
-For multiple bulls, repeat BULL1_ block as BULL2_, BULL3_, etc.
-Use numbers only for values and percentiles — no $ signs, no % signs, no extra text on data lines.`;
+For multiple bulls repeat BULL1_ as BULL2_, BULL3_, etc.
+Numbers only — no $ signs, no % signs, no text on data lines.`;
 
 // ─────────────────────────────────────────────
 // ROUTES
@@ -333,7 +399,7 @@ app.post('/api/analyze', analysisLimiter, async (req, res) => {
   };
 
   try {
-    // ── STEP 1: Fetch all animal data via Puppeteer ──
+    // ── STEP 1: Fetch animals sequentially (parallel causes memory timeouts) ──
     sendEvent('status', { message: 'Looking up cow on angus.org...' });
     const cowResult = await fetchAnimalData(cow.trim());
 
@@ -374,7 +440,7 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
       try {
         const stream = anthropic.messages.stream({
           model: 'claude-sonnet-4-6',
-          max_tokens: 6000,
+          max_tokens: Math.min(3000 + (filledBulls.length * 800), 6000),
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }]
         });
@@ -417,19 +483,40 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
                 regNum: get('COW_REG'),
                 epds: {
                   '$C': num('COW_C'), '$C_pct': pct('COW_C_PCT'),
-                  'Marb': num('COW_MARB'), 'Marb_pct': pct('COW_MARB_PCT'),
-                  'CW': num('COW_CW'), 'CW_pct': pct('COW_CW_PCT'),
-                  'RE': num('COW_RE'), 'RE_pct': pct('COW_RE_PCT'),
+                  '$B': num('COW_B'), '$B_pct': pct('COW_B_PCT'),
+                  '$W': num('COW_W'), '$W_pct': pct('COW_W_PCT'),
+                  '$M': num('COW_M'), '$M_pct': pct('COW_M_PCT'),
+                  '$F': num('COW_F'), '$F_pct': pct('COW_F_PCT'),
+                  '$G': num('COW_G'), '$G_pct': pct('COW_G_PCT'),
+                  'CED': num('COW_CED'), 'CED_pct': pct('COW_CED_PCT'),
+                  'BW': num('COW_BW'), 'BW_pct': pct('COW_BW_PCT'),
                   'WW': num('COW_WW'), 'WW_pct': pct('COW_WW_PCT'),
                   'YW': num('COW_YW'), 'YW_pct': pct('COW_YW_PCT'),
-                  'BW': num('COW_BW'), 'BW_pct': pct('COW_BW_PCT'),
-                  'CED': num('COW_CED'), 'CED_pct': pct('COW_CED_PCT'),
+                  'RADG': num('COW_RADG'), 'RADG_pct': pct('COW_RADG_PCT'),
+                  'DMI': num('COW_DMI'), 'DMI_pct': pct('COW_DMI_PCT'),
+                  'YH': num('COW_YH'), 'YH_pct': pct('COW_YH_PCT'),
+                  'SC': num('COW_SC'), 'SC_pct': pct('COW_SC_PCT'),
+                  'HP': num('COW_HP'), 'HP_pct': pct('COW_HP_PCT'),
+                  'CEM': num('COW_CEM'), 'CEM_pct': pct('COW_CEM_PCT'),
+                  'Milk': num('COW_MILK'), 'Milk_pct': pct('COW_MILK_PCT'),
+                  'MKH': num('COW_MKH'), 'MKH_pct': pct('COW_MKH_PCT'),
+                  'Teat': num('COW_TEAT'), 'Teat_pct': pct('COW_TEAT_PCT'),
+                  'UDDR': num('COW_UDDR'), 'UDDR_pct': pct('COW_UDDR_PCT'),
+                  'FL': num('COW_FL'), 'FL_pct': pct('COW_FL_PCT'),
+                  'MW': num('COW_MW'), 'MW_pct': pct('COW_MW_PCT'),
+                  'MH': num('COW_MH'), 'MH_pct': pct('COW_MH_PCT'),
+                  'EN': num('COW_EN'), 'EN_pct': pct('COW_EN_PCT'),
+                  'Doc_pct': pct('COW_DOC_PCT'),
                   'Claw_pct': pct('COW_CLAW_PCT'),
                   'Angle_pct': pct('COW_ANGLE_PCT'),
-                  'Doc_pct': pct('COW_DOC_PCT'),
+                  'PAP_pct': pct('COW_PAP_PCT'),
                   'HS_pct': pct('COW_HS_PCT'),
-                  'Milk': num('COW_MILK'), 'Milk_pct': pct('COW_MILK_PCT'),
-                  'SC_pct': pct('COW_SC_PCT'),
+                  'CW': num('COW_CW'), 'CW_pct': pct('COW_CW_PCT'),
+                  'Marb': num('COW_MARB'), 'Marb_pct': pct('COW_MARB_PCT'),
+                  'RE': num('COW_RE'), 'RE_pct': pct('COW_RE_PCT'),
+                  'Fat': num('COW_FAT'), 'Fat_pct': pct('COW_FAT_PCT'),
+                  'AxH': num('COW_AXH'), 'AxH_pct': pct('COW_AXH_PCT'),
+                  'AxJ': num('COW_AXJ'), 'AxJ_pct': pct('COW_AXJ_PCT'),
                 }
               },
               bulls: [],
@@ -451,19 +538,40 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
                 flags: getAll(`${prefix}_FLAG`).filter(f => f && f.length > 2),
                 epds: {
                   '$C': num(`${prefix}_C`), '$C_pct': pct(`${prefix}_C_PCT`),
-                  'Marb': num(`${prefix}_MARB`), 'Marb_pct': pct(`${prefix}_MARB_PCT`),
-                  'CW': num(`${prefix}_CW`), 'CW_pct': pct(`${prefix}_CW_PCT`),
-                  'RE': num(`${prefix}_RE`), 'RE_pct': pct(`${prefix}_RE_PCT`),
+                  '$B': num(`${prefix}_B`), '$B_pct': pct(`${prefix}_B_PCT`),
+                  '$W': num(`${prefix}_W`), '$W_pct': pct(`${prefix}_W_PCT`),
+                  '$M': num(`${prefix}_M`), '$M_pct': pct(`${prefix}_M_PCT`),
+                  '$F': num(`${prefix}_F`), '$F_pct': pct(`${prefix}_F_PCT`),
+                  '$G': num(`${prefix}_G`), '$G_pct': pct(`${prefix}_G_PCT`),
+                  'CED': num(`${prefix}_CED`), 'CED_pct': pct(`${prefix}_CED_PCT`),
+                  'BW': num(`${prefix}_BW`), 'BW_pct': pct(`${prefix}_BW_PCT`),
                   'WW': num(`${prefix}_WW`), 'WW_pct': pct(`${prefix}_WW_PCT`),
                   'YW': num(`${prefix}_YW`), 'YW_pct': pct(`${prefix}_YW_PCT`),
-                  'BW': num(`${prefix}_BW`), 'BW_pct': pct(`${prefix}_BW_PCT`),
-                  'CED': num(`${prefix}_CED`), 'CED_pct': pct(`${prefix}_CED_PCT`),
+                  'RADG': num(`${prefix}_RADG`), 'RADG_pct': pct(`${prefix}_RADG_PCT`),
+                  'DMI': num(`${prefix}_DMI`), 'DMI_pct': pct(`${prefix}_DMI_PCT`),
+                  'YH': num(`${prefix}_YH`), 'YH_pct': pct(`${prefix}_YH_PCT`),
+                  'SC': num(`${prefix}_SC`), 'SC_pct': pct(`${prefix}_SC_PCT`),
+                  'HP': num(`${prefix}_HP`), 'HP_pct': pct(`${prefix}_HP_PCT`),
+                  'CEM': num(`${prefix}_CEM`), 'CEM_pct': pct(`${prefix}_CEM_PCT`),
+                  'Milk': num(`${prefix}_MILK`), 'Milk_pct': pct(`${prefix}_MILK_PCT`),
+                  'MKH': num(`${prefix}_MKH`), 'MKH_pct': pct(`${prefix}_MKH_PCT`),
+                  'Teat': num(`${prefix}_TEAT`), 'Teat_pct': pct(`${prefix}_TEAT_PCT`),
+                  'UDDR': num(`${prefix}_UDDR`), 'UDDR_pct': pct(`${prefix}_UDDR_PCT`),
+                  'FL': num(`${prefix}_FL`), 'FL_pct': pct(`${prefix}_FL_PCT`),
+                  'MW': num(`${prefix}_MW`), 'MW_pct': pct(`${prefix}_MW_PCT`),
+                  'MH': num(`${prefix}_MH`), 'MH_pct': pct(`${prefix}_MH_PCT`),
+                  'EN': num(`${prefix}_EN`), 'EN_pct': pct(`${prefix}_EN_PCT`),
+                  'Doc_pct': pct(`${prefix}_DOC_PCT`),
                   'Claw_pct': pct(`${prefix}_CLAW_PCT`),
                   'Angle_pct': pct(`${prefix}_ANGLE_PCT`),
-                  'Doc_pct': pct(`${prefix}_DOC_PCT`),
+                  'PAP_pct': pct(`${prefix}_PAP_PCT`),
                   'HS_pct': pct(`${prefix}_HS_PCT`),
-                  'Milk': num(`${prefix}_MILK`), 'Milk_pct': pct(`${prefix}_MILK_PCT`),
-                  'SC_pct': pct(`${prefix}_SC_PCT`),
+                  'CW': num(`${prefix}_CW`), 'CW_pct': pct(`${prefix}_CW_PCT`),
+                  'Marb': num(`${prefix}_MARB`), 'Marb_pct': pct(`${prefix}_MARB_PCT`),
+                  'RE': num(`${prefix}_RE`), 'RE_pct': pct(`${prefix}_RE_PCT`),
+                  'Fat': num(`${prefix}_FAT`), 'Fat_pct': pct(`${prefix}_FAT_PCT`),
+                  'AxH': num(`${prefix}_AXH`), 'AxH_pct': pct(`${prefix}_AXH_PCT`),
+                  'AxJ': num(`${prefix}_AXJ`), 'AxJ_pct': pct(`${prefix}_AXJ_PCT`),
                 }
               });
             }
@@ -490,9 +598,11 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
               { label: 'Doc', cowKey: 'Doc_pct' },
               { label: 'HS', cowKey: 'HS_pct' },
               { label: 'SC', cowKey: 'SC_pct' },
+              { label: 'Teat', cowKey: 'Teat_pct' },
+              { label: 'UDDR', cowKey: 'UDDR_pct' },
             ];
             const valTraits = [
-              { label: '$C', cowKey: '$C_pct', pctSuffix: '_pct', valSuffix: '' },
+              { label: '$C', cowKey: '$C_pct' },
               { label: 'Marb', cowKey: 'Marb_pct' },
               { label: 'CW', cowKey: 'CW_pct' },
               { label: 'RE', cowKey: 'RE_pct' },
@@ -501,6 +611,11 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
               { label: 'BW', cowKey: 'BW_pct' },
               { label: 'CED', cowKey: 'CED_pct' },
               { label: 'Milk', cowKey: 'Milk_pct' },
+              { label: 'RADG', cowKey: 'RADG_pct' },
+              { label: 'DMI', cowKey: 'DMI_pct' },
+              { label: 'YH', cowKey: 'YH_pct' },
+              { label: 'MW', cowKey: 'MW_pct' },
+              { label: 'MH', cowKey: 'MH_pct' },
             ];
 
             parsed.bulls.forEach(bull => {
