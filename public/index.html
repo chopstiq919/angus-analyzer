@@ -830,8 +830,7 @@ async function runAnalysis() {
   } catch (err) {
     document.getElementById('resultsContent').innerHTML = `
       <div class="error-box">
-        <strong>Error:</strong> ${err.message}<br>
-        <span style="font-size:11px;margin-top:4px;display:block;">Check that the server is running and your API key is configured.</span>
+        <strong>Error:</strong> ${escapeHtml(err.message)}
       </div>`;
   }
 
@@ -881,6 +880,15 @@ function renderWithData(jsonData) {
   let html = '';
   const bulls = jsonData.bulls || [];
   const eligible = bulls.filter(b => b.parentageResult === 'PASS');
+
+  // ── Bulls that couldn't be looked up (not analyzed) ──
+  const skipped = jsonData.skipped || [];
+  if (skipped.length > 0) {
+    html += `
+      <div class="flag-item" style="margin:0 0 16px;font-size:12px;">
+        ${skipped.map(s => `⚠️ Bull ${escapeHtml(s.regNum)} was not analyzed. ${escapeHtml(s.reason)}`).join('<br>')}
+      </div>`;
+  }
 
   // ── SECTION 1: Expected Calf $Values per eligible bull ──
   if (eligible.length > 0) {

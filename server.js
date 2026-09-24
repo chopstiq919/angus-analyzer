@@ -158,6 +158,22 @@ async function fetchAnimalData(regNum, attempt = 1) {
   }
 }
 
+// Turn a raw Puppeteer error into a message a producer can act on
+function describeFetchError(regNum, err) {
+  const e = String(err || '').toLowerCase();
+  if (e.includes('failed to launch the browser')) {
+    return 'The lookup browser failed to start on the server. Redeploy on Railway and try again.';
+  }
+  if (e.includes('could not reach epd page')) {
+    return `No animal found for reg# ${regNum} on angus.org. Check the number.`;
+  }
+  if (e.includes('err_name_not_resolved') || e.includes('err_internet_disconnected') ||
+      e.includes('err_connection') || e.includes('timeout') || e.includes('exceeded')) {
+    return "Couldn't reach angus.org. The site may be down. Try again in a few minutes.";
+  }
+  return `Lookup failed for reg# ${regNum}: ${err}`;
+}
+
 // ─────────────────────────────────────────────
 // SYSTEM PROMPT
 // ─────────────────────────────────────────────
@@ -403,6 +419,12 @@ app.post('/api/analyze', analysisLimiter, async (req, res) => {
     sendEvent('status', { message: 'Looking up cow on angus.org...' });
     const cowResult = await fetchAnimalData(cow.trim());
 
+    // No cow data = nothing to analyze. Stop before looking up bulls or calling Claude.
+    if (!cowResult.success) {
+      sendEvent('error', { message: `Cow ${cow.trim()}: ${describeFetchError(cow.trim(), cowResult.error)}` });
+      return res.end();
+    }
+
     const bullResults = [];
     for (let i = 0; i < filledBulls.length; i++) {
       sendEvent('status', { message: `Looking up bull ${i + 1} of ${filledBulls.length}...` });
@@ -410,17 +432,25 @@ app.post('/api/analyze', analysisLimiter, async (req, res) => {
       bullResults.push(result);
     }
 
+    // Only analyze bulls we actually got data for; report the rest to the user
+    const okBulls = bullResults.filter(r => r.success);
+    const skipped = bullResults
+      .map((r, i) => r.success ? null : { regNum: filledBulls[i].trim(), reason: describeFetchError(filledBulls[i].trim(), r.error) })
+      .filter(Boolean);
+
+    if (okBulls.length === 0) {
+      const reasons = [...new Set(skipped.map(s => s.reason))].join(' ');
+      sendEvent('error', { message: `None of the bulls could be looked up. ${reasons}` });
+      return res.end();
+    }
+
     // ── STEP 2: Build prompt with real data ──
     sendEvent('status', { message: 'Running breeding analysis...' });
 
-    const cowSection = cowResult.success
-      ? `COW (Reg# ${cowResult.regNum}):\n${cowResult.data}`
-      : `COW (Reg# ${cow}): Data retrieval failed — ${cowResult.error}. Please verify the registration number.`;
+    const cowSection = `COW (Reg# ${cowResult.regNum}):\n${cowResult.data}`;
 
-    const bullSections = bullResults.map((r, i) =>
-      r.success
-        ? `BULL ${i + 1} (Reg# ${r.regNum}):\n${r.data}`
-        : `BULL ${i + 1} (Reg# ${filledBulls[i]}): Data retrieval failed — ${r.error}. Please verify the registration number.`
+    const bullSections = okBulls.map((r, i) =>
+      `BULL ${i + 1} (Reg# ${r.regNum}):\n${r.data}`
     ).join('\n\n---\n\n');
 
     const userPrompt = `Analyze this breeding scenario using the EPD and pedigree data below.
@@ -440,7 +470,7 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
       try {
         const stream = anthropic.messages.stream({
           model: 'claude-sonnet-4-6',
-          max_tokens: Math.min(3000 + (filledBulls.length * 800), 6000),
+          max_tokens: Math.min(3000 + (okBulls.length * 800), 6000),
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }]
         });
@@ -665,6 +695,7 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
               bull.flags = flags;
             });
 
+            parsed.skipped = skipped;
             console.log('Parsed:', parsed.cow?.name, parsed.bulls.length, 'bulls');
             sendEvent('done', { parsed });
           } else {
