@@ -6,6 +6,7 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 
 const app = express();
+app.set("trust proxy", 1); // Railway sits behind a proxy; lets express-rate-limit see real client IPs
 const PORT = process.env.PORT || 3000;
 
 // ─────────────────────────────────────────────
@@ -68,7 +69,7 @@ async function fetchAnimalData(regNum, attempt = 1) {
       await page.evaluate(() => {
         const buttons = [...document.querySelectorAll('button')];
         const accept = buttons.find(b =>
-          b.textContent.trim().includes('Accept All') ||
+          /^accept( all)?$/i.test(b.textContent.trim()) ||
           b.getAttribute('data-cky-tag') === 'accept-button'
         );
         if (accept) accept.click();
@@ -81,9 +82,12 @@ async function fetchAnimalData(regNum, attempt = 1) {
     await page.type('#EpdPedSearchRequest_sAnimalRegNum', regNum);
 
     // ── Step 3: Submit form ──
+    // angus.org (Oct 2026 redesign) now has a site-wide search form before the animal
+    // search, so clicking the first submit button hit the wrong form. Submit the form
+    // that owns the registration field instead.
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
-      page.click('input[type="submit"]')
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }),
+      page.$eval('#EpdPedSearchRequest_sAnimalRegNum', el => el.form.requestSubmit())
     ]);
 
     // ── Step 4: Verify we're on the EPD detail page ──
