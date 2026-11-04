@@ -150,10 +150,14 @@ async function fetchAnimalData(regNum, attempt = 1) {
 
   } catch (err) {
     console.error(`Puppeteer error for ${regNum} (attempt ${attempt}):`, err.message);
-    // Retry once on timeout
-    if (attempt < 2 && err.message.includes('timeout')) {
+    // Retry once on any timeout. Puppeteer's waitForSelector/waitForFunction
+    // timeouts say "Waiting failed: 30000ms exceeded" — no word "timeout" —
+    // so check the error type, not just the message text.
+    const isTimeout = err.name === 'TimeoutError' || /timeout|exceeded/i.test(err.message);
+    if (attempt < 2 && isTimeout) {
       console.log(`Retrying ${regNum}...`);
       if (browser) await browser.close().catch(() => {});
+      browser = null;
       return fetchAnimalData(regNum, 2);
     }
     return { success: false, regNum, error: err.message };
@@ -457,7 +461,11 @@ app.post('/api/analyze', analysisLimiter, async (req, res) => {
       `BULL ${i + 1} (Reg# ${r.regNum}):\n${r.data}`
     ).join('\n\n---\n\n');
 
-    const userPrompt = `Analyze this breeding scenario using the EPD and pedigree data below.
+    // NOTE: this used to end with "assess foot structure contextually, and give your
+    // recommendation" — which contradicts the system prompt's "data block only" rule
+    // and invites Claude to write prose first. With 3 bulls, that prose can eat the
+    // token budget before ===END=== is reached.
+    const userPrompt = `Extract the EPD and pedigree data below into the ===DATA=== block.
 ${cowNotes ? `Producer notes: ${cowNotes}` : ''}
 PRIORITY $VALUES: ${priorities}
 
@@ -467,14 +475,18 @@ ${cowSection}
 
 ${bullSections}
 
-Apply all parentage rules, compare EPDs weighted toward priority $Values, assess foot structure contextually, and give your recommendation.`;
+Apply all parentage rules to set each bull's PARENTAGE line. Output ONLY the ===DATA=== block for the cow and all ${okBulls.length} bull(s), ending with ===END===.`;
 
     // ── STEP 3: Claude analysis (no web search needed) ──
+    // Each bull adds ~72 data lines (~800-1000 tokens). You're only billed for
+    // tokens actually generated, so generous headroom costs nothing extra.
+    const maxTokens = Math.min(3000 + (okBulls.length * 1500), 8000);
+
     const runStream = async (attempt = 1) => {
       try {
         const stream = anthropic.messages.stream({
           model: 'claude-sonnet-4-6',
-          max_tokens: Math.min(3000 + (okBulls.length * 800), 6000),
+          max_tokens: maxTokens,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: userPrompt }]
         });
@@ -486,7 +498,10 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
           sendEvent('text', { text });
         });
 
-        stream.on('message', () => {
+        stream.on('message', (message) => {
+          const stopReason = message?.stop_reason;
+          const outTokens = message?.usage?.output_tokens;
+          console.log(`Claude finished — stop_reason: ${stopReason}, output_tokens: ${outTokens}/${maxTokens}`);
           console.log('Claude response preview:', fullText.slice(0, 200));
 
           // Extract the data block between ===DATA=== and ===END===
@@ -703,9 +718,18 @@ Apply all parentage rules, compare EPDs weighted toward priority $Values, assess
             console.log('Parsed:', parsed.cow?.name, parsed.bulls.length, 'bulls');
             sendEvent('done', { parsed });
           } else {
-            console.log('No ===DATA=== block found in response');
-            console.log('Full response:', fullText.slice(0, 1000));
-            sendEvent('error', { message: 'Could not extract data from analysis. Please try again.' });
+            // Log both ends — the head shows whether Claude wrote prose first,
+            // the tail shows where it got cut off.
+            console.log('No complete ===DATA=== ... ===END=== block found');
+            console.log('Response head:', fullText.slice(0, 600));
+            console.log('Response tail:', fullText.slice(-600));
+
+            const hitLimit = stopReason === 'max_tokens';
+            sendEvent('error', {
+              message: hitLimit
+                ? `Analysis ran out of room before finishing (${okBulls.length} bulls). Try again, or run fewer bulls at once.`
+                : 'Could not extract data from analysis. Please try again.'
+            });
           }
           res.end();
         });
